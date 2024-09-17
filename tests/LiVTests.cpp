@@ -2,7 +2,7 @@
 // Created by aryaman on 24.04.24.
 //
 #include <gtest/gtest.h>
-#include "../liv.h"
+#include "liv.h"
 
 TEST(VolumeTest, UniqueIdTest) {
     float position[3] = {0.0f, 0.0f, 0.0f};

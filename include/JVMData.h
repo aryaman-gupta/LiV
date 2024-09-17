@@ -7,6 +7,8 @@
 
 #include <jni.h>
 #include <dirent.h>
+#include <iostream>
+#include <string>
 
 class JVMData {
 public:

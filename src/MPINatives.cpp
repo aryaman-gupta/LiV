@@ -2,7 +2,7 @@
 // Created by aryaman on 22.04.24.
 //
 #include <iostream>
-#include "include/MPINatives.h"
+#include "../include/MPINatives.h"
 
 #include <mpi.h>
 

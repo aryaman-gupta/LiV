@@ -6,11 +6,11 @@
 #include <jni.h>
 #include <dirent.h>
 
-#include "include/JVMData.h"
-#include "include/MPIBuffers.h"
-#include "include/MPINatives.h"
-#include "include/ManageRendering.h"
-#include "utils/JVMUtils.h"
+#include "JVMData.h"
+#include "MPIBuffers.h"
+#include "MPINatives.h"
+#include "ManageRendering.h"
+#include "../src/utils/JVMUtils.h"
 
 #define NUM_SUPERSEGMENTS 20
 
