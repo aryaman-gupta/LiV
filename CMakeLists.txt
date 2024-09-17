@@ -1,26 +1,27 @@
-cmake_minimum_required(VERSION 3.28)
-project(LiV)
+cmake_minimum_required(VERSION 3.20)
+project(LiV VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(ENV{JAVA_HOME} /home/aryaman/.jdks/temurin-21.0.3/)
+option(BUILD_TESTS "Build unit tests" ON)
+option(BUILD_EXAMPLES "Build example programs" OFF)
 
-find_package(Java)
-find_package(JNI)
-find_package(MPI)
+add_subdirectory(src)
 
-add_library(LiV SHARED library.cpp
-        include/JVMData.h
-        include/MPINatives.h
-        MPINatives.cpp
-        utils/JVMUtils.h
-        utils/JVMUtils.cpp
-        include/MPIBuffers.h
-        include/ManageRendering.h
-        ManageRendering.cpp)
+if(BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
 
-target_include_directories(LiV PUBLIC ${JNI_INCLUDE_DIRS} ${ICET_INCLUDE_DIRS} ${MPI_C_INCLUDE_PATH})
+message(STATUS "BUILD_EXAMPLES: ${BUILD_EXAMPLES}")
 
-target_link_libraries(LiV ${JNI_LIBRARIES} ${MPI_CXX_LIBRARIES} ${ICET_CORE_LIBS} ${ICET_GL_LIBS} ${ICET_MPI_LIBS})
 
-add_subdirectory(tests)
+if(BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
+
+install(
+        DIRECTORY include/
+        DESTINATION include
+        FILES_MATCHING PATTERN "*.h*"  # Matches .h and .hpp files
+)
