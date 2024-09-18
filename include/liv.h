@@ -28,7 +28,7 @@ namespace liv {
 
     public:
         JVMData jvmData;
-        MPIBuffers mpiBuffers;
+        MPIBuffers mpiBuffers{};
         MPI_Comm livComm;
         MPI_Comm applicationComm;
 
@@ -48,9 +48,20 @@ namespace liv {
         return MPI_COMM_WORLD;
     }
 
+    LiVEngine::LiVEngine() {
+        std::cout << "Entering LiVEngine constructor" << std::endl;
+        jvmData = JVMData();
+        std::cout << "Initialized jvmData" << std::endl;
+        mpiBuffers = MPIBuffers();
+        std::cout << "Initialized mpiBuffers" << std::endl;
+        livComm = nullptr;
+        applicationComm = MPI_COMM_WORLD;
+        std::cout << "Exiting LiVEngine constructor" << std::endl;
+    }
+
     inline LiVEngine LiVEngine::initialize(int windowWidth, int windowHeight) {
 
-        LiVEngine liv;
+
 
         int provided;
         MPI_Init_thread(NULL, NULL, MPI_THREAD_SERIALIZED, &provided);
@@ -69,6 +80,8 @@ namespace liv {
 
         int node_rank;
         MPI_Comm_rank(nodeComm,&node_rank);
+
+        LiVEngine liv;
 
         liv.livComm = liv.setupCommunicators();
 
@@ -137,6 +150,8 @@ namespace liv {
 
         jvmData.jvm->DetachCurrentThread();
     }
+
+
 
 
     template <typename T>
