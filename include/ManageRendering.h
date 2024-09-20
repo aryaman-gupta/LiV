@@ -8,8 +8,8 @@
 #include "JVMData.h"
 #include <mpi.h>
 
-void doRender(const JVMData& jvmData);
-void setSceneConfigured(const JVMData& jvmData);
+void doRender(JVMData& jvmData);
+void setSceneConfigured(JVMData& jvmData);
 void waitRendererConfigured(const JVMData& jvmData);
 void stopRendering(const JVMData& jvmData);
 void setupICET(int windowWidth, int windowHeight, MPI_Comm comm);

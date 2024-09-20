@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <sys/stat.h>
 #include <liv.h>
+#include <thread>
 
 struct BlockInfo {
     int sizeX;
@@ -72,7 +73,6 @@ bool directoryExists(const std::string& path) {
 int main(int argc, char* argv[]) {
 
     auto livEngine = liv::LiVEngine::initialize(1920, 1080);
-//    MPI_Init(&argc, &argv);
 
     int rank, numProcs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -140,9 +140,15 @@ int main(int argc, char* argv[]) {
     float position[3] = {blockInfo.posX, blockInfo.posY, blockInfo.posZ};
     int dimensions[3] = {blockInfo.sizeX, blockInfo.sizeY, blockInfo.sizeZ};
 
-//    auto volume = liv::createVolume<char>(position, dimensions, &livEngine);
-//
-//    volume.update(reinterpret_cast<char*>(blockData.data()), blockData.size());
+    std::thread renderThread(doRender, std::ref(*livEngine.jvmData));
+
+    auto volume = liv::createVolume<char>(position, dimensions, &livEngine);
+
+    volume.update(reinterpret_cast<char*>(blockData.data()), blockData.size());
+
+    setSceneConfigured(*livEngine.jvmData);
+
+    renderThread.join();
 
     // Finalize MPI
     MPI_Finalize();

@@ -45,4 +45,7 @@ jmethodID findJvmMethod(JNIEnv *env, jclass clazz, const char* name, const char*
  */
 void invokeVoidJvmMethod(JNIEnv *env, jobject obj, jmethodID methodID, ...);
 
+bool createJavaVM(JavaVM **jvm, JNIEnv **env, JavaVMOption *options, int nOptions);
+
+
 #endif //JVMUTILS_H

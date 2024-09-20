@@ -57,7 +57,7 @@ void registerNativeFunctions(const JVMData& jvmData, const MPIBuffers& mpiBuffer
         std::cout<<"Natives registered. The return value is: "<< ret <<std::endl;
     }
 
-    setPointerAddresses(jvmData, mpiBuffers, comm);
+    // setPointerAddresses(jvmData, mpiBuffers, comm);
 }
 
 void setMPIParams(JVMData jvmData , int rank, int node_rank, int commSize) {

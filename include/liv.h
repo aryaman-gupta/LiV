@@ -10,7 +10,7 @@
 #include "MPIBuffers.h"
 #include "MPINatives.h"
 #include "ManageRendering.h"
-#include "../src/utils/JVMUtils.h"
+#include "utils/JVMUtils.h"
 
 #define NUM_SUPERSEGMENTS 20
 
@@ -27,7 +27,7 @@ namespace liv {
         void updateVolume(T * buffer, long int buffer_size, int volumeID) const;
 
     public:
-        JVMData jvmData;
+        JVMData* jvmData;
         MPIBuffers mpiBuffers{};
         MPI_Comm livComm;
         MPI_Comm applicationComm;
@@ -48,9 +48,9 @@ namespace liv {
         return MPI_COMM_WORLD;
     }
 
-    LiVEngine::LiVEngine() {
+    inline LiVEngine::LiVEngine() {
         std::cout << "Entering LiVEngine constructor" << std::endl;
-        jvmData = JVMData();
+        jvmData = new JVMData();
         std::cout << "Initialized jvmData" << std::endl;
         mpiBuffers = MPIBuffers();
         std::cout << "Initialized mpiBuffers" << std::endl;
@@ -60,8 +60,6 @@ namespace liv {
     }
 
     inline LiVEngine LiVEngine::initialize(int windowWidth, int windowHeight) {
-
-
 
         int provided;
         MPI_Init_thread(NULL, NULL, MPI_THREAD_SERIALIZED, &provided);
@@ -92,11 +90,11 @@ namespace liv {
         liv.mpiBuffers.gatherColorPointer = malloc(windowHeight * windowWidth * NUM_SUPERSEGMENTS * 4 * 4);
         liv.mpiBuffers.gatherDepthPointer = malloc(windowHeight * windowWidth * NUM_SUPERSEGMENTS * 4 * 2);
 
-        registerNativeFunctions(liv.jvmData, liv.mpiBuffers, liv.livComm);
+        registerNativeFunctions(*liv.jvmData, liv.mpiBuffers, liv.livComm);
 
-        setMPIParams(liv.jvmData, rank, node_rank, num_processes);
+        setMPIParams(*liv.jvmData, rank, node_rank, num_processes);
 
-        setupICET(windowWidth, windowHeight, liv.livComm);
+        // setupICET(windowWidth, windowHeight, liv.livComm);
 
         return liv;
     }
@@ -106,9 +104,9 @@ namespace liv {
     void LiVEngine::createVolume(float *position, int *dimensions, int volumeID) const {
         JNIEnv *env;
         //TODO: can jvmData.env be used instead of attaching current thread, since we are in the same thread as the one that created the JVM?
-        jvmData.jvm->AttachCurrentThread(reinterpret_cast<void **>(&env), NULL);
+        jvmData->jvm->AttachCurrentThread(reinterpret_cast<void **>(&env), NULL);
 
-        jmethodID addVolumeMethod = findJvmMethod(env, jvmData.clazz, "addVolume", "(I[I[FZ)V");
+        jmethodID addVolumeMethod = findJvmMethod(env, jvmData->clazz, "addVolume", "(I[I[FZ)V");
 
         jintArray jdims = env->NewIntArray(3);
         jfloatArray jpos = env->NewFloatArray(3);
@@ -116,23 +114,26 @@ namespace liv {
         env->SetIntArrayRegion(jdims, 0, 3, dimensions);
         env->SetFloatArrayRegion(jpos, 0, 3, position);
 
-        invokeVoidJvmMethod(env, jvmData.obj, addVolumeMethod, volumeID, jdims, jpos, sizeof(T) == 2);
+        env->CallVoidMethod(jvmData->obj, addVolumeMethod, volumeID, jdims, jpos, sizeof(T) == 2);
+        // invokeVoidJvmMethod(env, jvmData->obj, addVolumeMethod, volumeID, jdims, jpos, sizeof(T) == 2);
 
-        jvmData.jvm->DetachCurrentThread();
+        jvmData->jvm->DetachCurrentThread();
     }
 
 
     template <typename T>
     void LiVEngine::updateVolume(T * buffer, long int buffer_size, int volumeID) const {
         JNIEnv *env;
-        jvmData.jvm->AttachCurrentThread(reinterpret_cast<void **>(&env), NULL);
+        jvmData->jvm->AttachCurrentThread(reinterpret_cast<void **>(&env), NULL);
 
-        jmethodID updateVolumeMethod = findJvmMethod(env, jvmData.clazz, "updateVolume", "(ILjava/nio/ByteBuffer;)V");
+        jmethodID updateVolumeMethod = findJvmMethod(env, jvmData->clazz, "updateVolume", "(ILjava/nio/ByteBuffer;)V");
 
         jobject jbuffer = env->NewDirectByteBuffer(buffer, buffer_size);
-        invokeVoidJvmMethod(env, jvmData.obj, updateVolumeMethod, volumeID, jbuffer);
+        std::cout << "volume id is: " << volumeID << std::endl;
+        env->CallVoidMethod(jvmData->obj, updateVolumeMethod, volumeID, jbuffer);
+        // invokeVoidJvmMethod(env, jvmData->obj, updateVolumeMethod, volumeID, jbuffer);
 
-        jvmData.jvm->DetachCurrentThread();
+        jvmData->jvm->DetachCurrentThread();
     }
 
     inline void LiVEngine::doRender() const {
@@ -141,14 +142,14 @@ namespace liv {
 
         JNIEnv *env;
 
-        jvmData.jvm->AttachCurrentThread(reinterpret_cast<void **>(&env), nullptr);
+        jvmData->jvm->AttachCurrentThread(reinterpret_cast<void **>(&env), nullptr);
 
-        jmethodID mainMethod = findJvmMethod(env, jvmData.clazz, "main", "()V");
+        jmethodID mainMethod = findJvmMethod(env, jvmData->clazz, "main", "()V");
         if(mainMethod != nullptr) {
-            invokeVoidJvmMethod(env, jvmData.obj, mainMethod);
+            invokeVoidJvmMethod(env, jvmData->obj, mainMethod);
         }
 
-        jvmData.jvm->DetachCurrentThread();
+        jvmData->jvm->DetachCurrentThread();
     }
 
 
@@ -195,6 +196,14 @@ namespace liv {
         dimensions[2] = dims[2];
 
         id = currentID;
+
+        if(livEngine != nullptr) {
+            livEngine->createVolume<T>(position, dimensions, id);
+        } else {
+            std::cerr << __FILE__ << __LINE__ << "ERROR: LiVEngine is not correctly initialized. The volume will"
+                                                 "not be updated in the rendering scenegraph" << std::endl;
+        }
+
         currentID++;
     }
 

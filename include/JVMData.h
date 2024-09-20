@@ -9,6 +9,16 @@
 #include <dirent.h>
 #include <iostream>
 #include <string>
+#include <utils/JVMUtils.h>
+
+static const char* getEnvVar(const char* varName, const bool null_is_error = true) {
+    const char* value = getenv(varName);
+    if (value == nullptr && null_is_error) {
+        std::cerr << "ERROR: " << varName << " environment variable is not set." << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+    return value;
+}
 
 class JVMData {
 public:
@@ -27,7 +37,9 @@ inline JVMData::JVMData() {
     struct dirent *ent;
     std::string classPath = "-Djava.class.path=";
     //"/home/aryaman/Repositories/LiV-renderer/build/libs/";
-    std::string directory = getenv("SCENERY_CLASS_PATH");
+    // std::string directory = getEnvVar("SCENERY_CLASS_PATH");
+    std::string directory = "/home/aryaman/Repositories/LiV-renderer/build/libs/";
+
 
     if ((dir = opendir (directory.c_str())) != nullptr) {
         while ((ent = readdir (dir)) != nullptr) {
@@ -44,7 +56,8 @@ inline JVMData::JVMData() {
 
     className = "graphics/scenery/" + className;
 
-    JavaVMInitArgs vm_args;                        // Initialization arguments
+    JavaVMInitArgs vm_args;                // Initialization arguments
+    int num_options = 7;
     auto *options = new JavaVMOption[7];   // JVM invocation options
     options[0].optionString = (char *)classPath.c_str();
 
@@ -63,8 +76,11 @@ inline JVMData::JVMData() {
     //    options[4].optionString = (char *)
     //                                      "-Dscenery.LogLevel=debug";
 
-    std::string option1 = std::string("-Dorg.lwjgl.system.SharedLibraryExtractPath=") + getenv("LWJGL_SHARED_PATH");
-    std::string option2 = std::string("-Dorg.lwjgl.librarypath=") + getenv("LWJGL_LIBRARY_PATH");
+    auto lwjgl_shared_path = (getEnvVar("LWJGL_SHARED_PATH", false) == nullptr) ? "/tmp/" : getEnvVar("LWJGL_SHARED_PATH");
+    auto lwjgl_library_path = (getEnvVar("LWJGL_LIBRARY_PATH", false) == nullptr) ? "/tmp/" : getEnvVar("LWJGL_LIBRARY_PATH");
+
+    std::string option1 = std::string("-Dorg.lwjgl.system.SharedLibraryExtractPath=") + lwjgl_shared_path;
+    std::string option2 = std::string("-Dorg.lwjgl.librarypath=") + lwjgl_library_path;
 
     options[5].optionString = (char *)
             (option1).c_str();
@@ -73,21 +89,21 @@ inline JVMData::JVMData() {
 
 
     vm_args.version = JNI_VERSION_21;
-    vm_args.nOptions = 7;
+    vm_args.nOptions = num_options;
     vm_args.options = options;
     vm_args.ignoreUnrecognized = false;
 
-    jint rc = JNI_CreateJavaVM(&jvm, (void **) &env, &vm_args);
+    // jint rc = JNI_CreateJavaVM(&jvm, (void **) &env, &vm_args);
 
-    std::cout<<"Requested JNI version 21"<<std::endl;
+    std::cout<<"Requesting JNI version 21"<<std::endl;
 
-    delete[] options;
-
-    if (rc != JNI_OK) {
+    if (!createJavaVM(&jvm, &env, options, vm_args.nOptions)) {
         // TODO: error processing...
-        std::cin.get();
+        std::cerr << "ERROR: JVM load failed" << std::endl;
         std::exit(EXIT_FAILURE);
     }
+
+    delete[] options;
 
     std::cout << "JVM load succeeded: Version " << std::endl;
     jint ver = env->GetVersion();

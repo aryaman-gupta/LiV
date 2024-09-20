@@ -13,7 +13,32 @@ void setupICET(int windowWidth, int windowHeight, MPI_Comm comm) {
 }
 
 void doRender(JVMData& jvmData) {
-    //TODO: Implement this function
+    std::cout << "doRender" << std::endl;
+
+    JNIEnv *env;
+    //    jvmData.jvm->GetEnv((void **)&env, JNI_VERSION_1_6);
+    jvmData.jvm->AttachCurrentThread(reinterpret_cast<void **>(&env), NULL);
+
+    std::cout << "Looking for main function!" << std::endl;
+
+    jmethodID mainMethod = env->GetMethodID(jvmData.clazz, "main", "()V");
+    if(mainMethod == nullptr) {
+        if (env->ExceptionOccurred()) {
+            std::cout << "ERROR in finding main!" << std::endl;
+            env->ExceptionDescribe();
+        } else {
+            std::cout << "ERROR: function main not found!" << std::endl;
+            //            std::exit(EXIT_FAILURE);
+        }
+    }
+    env->CallVoidMethod(jvmData.obj, mainMethod);
+    if(env->ExceptionOccurred()) {
+        std::cout << "ERROR in calling main!" << std::endl;
+        env->ExceptionDescribe();
+        env->ExceptionClear();
+    }
+
+    jvmData.jvm->DetachCurrentThread();
 }
 
 void setSceneConfigured(JVMData& jvmData) {
