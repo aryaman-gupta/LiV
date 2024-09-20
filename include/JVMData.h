@@ -37,8 +37,8 @@ inline JVMData::JVMData() {
     struct dirent *ent;
     std::string classPath = "-Djava.class.path=";
     //"/home/aryaman/Repositories/LiV-renderer/build/libs/";
-    // std::string directory = getEnvVar("SCENERY_CLASS_PATH");
-    std::string directory = "/home/aryaman/Repositories/LiV-renderer/build/libs/";
+    std::string directory = getEnvVar("SCENERY_CLASS_PATH");
+    // std::string directory = "/home/aryaman/Repositories/LiV-renderer/build/libs/";
 
 
     if ((dir = opendir (directory.c_str())) != nullptr) {
