@@ -8,6 +8,8 @@
 #include <liv.h>
 #include <thread>
 
+typedef unsigned short datatype;
+
 struct BlockInfo {
     int sizeX;
     int sizeY;
@@ -142,9 +144,9 @@ int main(int argc, char* argv[]) {
 
     std::thread renderThread(doRender, std::ref(*livEngine.jvmData));
 
-    auto volume = liv::createVolume<char>(position, dimensions, &livEngine);
+    auto volume = liv::createVolume<datatype>(position, dimensions, &livEngine);
 
-    volume.update(reinterpret_cast<char*>(blockData.data()), blockData.size());
+    volume.update(reinterpret_cast<datatype*>(blockData.data()), blockData.size());
 
     setSceneConfigured(*livEngine.jvmData);
 
