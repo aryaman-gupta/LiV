@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
     std::string dataDirectory = argv[1];
 
     // Construct the blocks directory path
-    std::string blocksDirectory = dataDirectory + "/blocks" + std::to_string(numProcs);
+    std::string blocksDirectory = dataDirectory + "/blocks2";
 
     // Check if blocks directory exists
     if (!directoryExists(blocksDirectory)) {
@@ -111,8 +111,9 @@ int main(int argc, char* argv[]) {
     }
 
     // Construct the file paths for the block data and info files
-    std::string blockFileName = blocksDirectory + "/block_" + std::to_string(rank) + ".raw";
-    std::string infoFileName = blocksDirectory + "/block_" + std::to_string(rank) + ".info";
+    int div = 0;
+    std::string blockFileName = blocksDirectory + "/block_" + std::to_string(div) + ".raw";
+    std::string infoFileName = blocksDirectory + "/block_" + std::to_string(div) + ".info";
 
     // Read the block information
     BlockInfo blockInfo;
@@ -127,6 +128,12 @@ int main(int argc, char* argv[]) {
         MPI_Finalize();
         return EXIT_FAILURE;
     }
+
+    float pixelToWorld = 3.84f/1024.0f;
+
+    blockInfo.posX *= pixelToWorld;
+    blockInfo.posY *= (-1 * pixelToWorld);
+    blockInfo.posZ *= pixelToWorld;
 
     // Now you have:
     // - blockData: vector<char> containing the raw data of the block
