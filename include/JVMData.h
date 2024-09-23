@@ -67,8 +67,13 @@ inline JVMData::JVMData() {
     options[2].optionString = (char *)
             "-Dorg.lwjgl.system.stackSize=1000";
 
+    //doing headless rendering by default
+    auto headless = (getEnvVar("SCENERY_HEADLESS", false) == nullptr) ? "true" : getEnvVar("SCENERY_HEADLESS");
+
+    std::string headlessOption = "-Dscenery.Headless=" + std::string(headless);
+
     options[3].optionString = (char *)
-            "-Dscenery.Headless=false";
+            headlessOption.c_str();
 
     options[4].optionString = (char *)
             "-Dscenery.LogLevel=info";
