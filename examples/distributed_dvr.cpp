@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
     std::string dataDirectory = argv[1];
 
     // Construct the blocks directory path
-    std::string blocksDirectory = dataDirectory + "/blocks4";
+    std::string blocksDirectory = dataDirectory + "/blocks" + std::to_string(numProcs);
 
     // Check if blocks directory exists
     if (!directoryExists(blocksDirectory)) {
@@ -111,9 +111,9 @@ int main(int argc, char* argv[]) {
     }
 
     // Construct the file paths for the block data and info files
-    int div = 3;
-    std::string blockFileName = blocksDirectory + "/block_" + std::to_string(div) + ".raw";
-    std::string infoFileName = blocksDirectory + "/block_" + std::to_string(div) + ".info";
+    std::string blockFileName = blocksDirectory + "/block_" + std::to_string(rank) + ".raw";
+    std::string infoFileName = blocksDirectory + "/block_" + std::to_string(rank) + ".info";
+
 
     // Read the block information
     BlockInfo blockInfo;
