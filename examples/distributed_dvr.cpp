@@ -74,7 +74,7 @@ bool directoryExists(const std::string& path) {
 
 int main(int argc, char* argv[]) {
 
-    auto livEngine = liv::LiVEngine::initialize(1920, 1080);
+    auto livEngine = liv::LiVEngine::initialize(1280, 720);
 
     int rank, numProcs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -92,7 +92,7 @@ int main(int argc, char* argv[]) {
     std::string dataDirectory = argv[1];
 
     // Construct the blocks directory path
-    std::string blocksDirectory = dataDirectory + "/blocks2";
+    std::string blocksDirectory = dataDirectory + "/blocks4";
 
     // Check if blocks directory exists
     if (!directoryExists(blocksDirectory)) {
@@ -111,7 +111,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Construct the file paths for the block data and info files
-    int div = 0;
+    int div = 3;
     std::string blockFileName = blocksDirectory + "/block_" + std::to_string(div) + ".raw";
     std::string infoFileName = blocksDirectory + "/block_" + std::to_string(div) + ".info";
 
