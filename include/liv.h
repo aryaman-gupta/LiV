@@ -26,13 +26,18 @@ namespace liv {
         template <typename T>
         void updateVolume(T * buffer, long int buffer_size, int volumeID) const;
 
+        int wWidth;
+        int wHeight;
     public:
         JVMData* jvmData;
         MPIBuffers mpiBuffers{};
         MPI_Comm livComm;
         MPI_Comm applicationComm;
 
-        LiVEngine();
+        //no default constructor
+        LiVEngine() = delete;
+
+        LiVEngine(int windowWidth, int windowHeight);
 
         static LiVEngine initialize(int windowWidth, int windowHeight);
 
@@ -48,9 +53,9 @@ namespace liv {
         return MPI_COMM_WORLD;
     }
 
-    inline LiVEngine::LiVEngine() {
+    inline LiVEngine::LiVEngine(int windowWidth = 1280, int windowHeight = 720) : wWidth(windowWidth), wHeight(windowHeight) {
         std::cout << "Entering LiVEngine constructor" << std::endl;
-        jvmData = new JVMData();
+        jvmData = new JVMData(windowWidth, windowHeight);
         std::cout << "Initialized jvmData" << std::endl;
         mpiBuffers = MPIBuffers();
         std::cout << "Initialized mpiBuffers" << std::endl;
@@ -79,7 +84,7 @@ namespace liv {
         int node_rank;
         MPI_Comm_rank(nodeComm,&node_rank);
 
-        LiVEngine liv;
+        auto liv = LiVEngine(windowWidth, windowHeight);
 
         liv.livComm = liv.setupCommunicators();
 

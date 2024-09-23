@@ -27,10 +27,10 @@ public:
     jobject obj;
     JNIEnv *env;
 
-    explicit JVMData();
+    explicit JVMData(int windowWidth, int windowHeight);
 };
 
-inline JVMData::JVMData() {
+inline JVMData::JVMData(int windowWidth, int windowHeight) {
     std::string className = "DistributedVolumeRenderer";
 
     DIR *dir;
@@ -128,7 +128,7 @@ inline JVMData::JVMData() {
 
     std::cout << "Class found " << className << std::endl;
 
-    jmethodID constructor = env->GetMethodID(localClass, "<init>", "()V");  // find constructor
+    jmethodID constructor = env->GetMethodID(localClass, "<init>", "(II)V");  // find constructor
     if (constructor == nullptr) {
         if( env->ExceptionOccurred() ) {
             env->ExceptionDescribe();
@@ -142,7 +142,7 @@ inline JVMData::JVMData() {
 
     //if constructor found, continue
     jobject localObj;
-    localObj = env->NewObject(localClass, constructor);
+    localObj = env->NewObject(localClass, constructor, windowWidth, windowHeight);
     if(env->ExceptionOccurred()) {
         env->ExceptionDescribe();
         env->ExceptionClear();
