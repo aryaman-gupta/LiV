@@ -7,6 +7,7 @@
 #include <cstring>
 #include <algorithm>
 #include <sys/stat.h> // For mkdir
+#include <climits>    // For INT_MAX
 #include <sys/types.h>
 
 #if defined(_WIN32)
@@ -23,6 +24,7 @@ struct VolumeInfo {
     int bit_resolution;
 };
 
+// Function to parse the .info file
 bool parseInfoFile(const std::string& infoFilePath, VolumeInfo& volInfo) {
     std::ifstream infoFile(infoFilePath);
     if (!infoFile.is_open()) {
@@ -35,18 +37,41 @@ bool parseInfoFile(const std::string& infoFilePath, VolumeInfo& volInfo) {
     return true;
 }
 
+// Function to compute the subdivision of the volume
 void computeSubdivision(int numDivisions, int& nx, int& ny, int& nz) {
-    int n = std::round(std::pow(numDivisions, 1.0 / 3.0));
-    nx = ny = nz = n;
+    // Start with nx = ny = nz = 1
+    nx = ny = nz = 1;
 
-    // Adjust nx, ny, nz to ensure that nx * ny * nz >= numDivisions
-    while (nx * ny * nz < numDivisions) {
-        if (nx <= ny && nx <= nz)
-            nx++;
-        else if (ny <= nx && ny <= nz)
-            ny++;
-        else
-            nz++;
+    // Find the factors of numDivisions to distribute subdivisions along axes
+    int bestDifference = INT_MAX;
+
+    for (int x = 1; x <= numDivisions; ++x) {
+        if (numDivisions % x != 0) continue;
+        int remaining = numDivisions / x;
+        for (int y = 1; y <= remaining; ++y) {
+            if (remaining % y != 0) continue;
+            int z = remaining / y;
+
+            // Calculate the difference in subdivisions to find the most cuboidal blocks
+            int maxDim = std::max({x, y, z});
+            int minDim = std::min({x, y, z});
+            int diff = maxDim - minDim;
+
+            if (diff < bestDifference) {
+                nx = x;
+                ny = y;
+                nz = z;
+                bestDifference = diff;
+            }
+
+            if (diff == 0) {
+                // Perfect cube found, no need to search further
+                break;
+            }
+        }
+        if (bestDifference == 0) {
+            break;
+        }
     }
 }
 
@@ -133,13 +158,25 @@ int main(int argc, char* argv[]) {
     computeSubdivision(numDivisions, nx, ny, nz);
 
     // Compute block sizes
-    int baseBlockSizeX = volInfo.x_dim / nx;
-    int baseBlockSizeY = volInfo.y_dim / ny;
-    int baseBlockSizeZ = volInfo.z_dim / nz;
+    std::vector<int> blockSizesX(nx, volInfo.x_dim / nx);
+    std::vector<int> blockSizesY(ny, volInfo.y_dim / ny);
+    std::vector<int> blockSizesZ(nz, volInfo.z_dim / nz);
 
+    // Distribute remainders
     int remainderX = volInfo.x_dim % nx;
+    for (int i = 0; i < remainderX; ++i) {
+        blockSizesX[i]++;
+    }
+
     int remainderY = volInfo.y_dim % ny;
+    for (int i = 0; i < remainderY; ++i) {
+        blockSizesY[i]++;
+    }
+
     int remainderZ = volInfo.z_dim % nz;
+    for (int i = 0; i < remainderZ; ++i) {
+        blockSizesZ[i]++;
+    }
 
     // Create the dataset directory within the base output directory
     std::string volumeFileName = volumeFilePath.substr(volumeFilePath.find_last_of("/\\") + 1);
@@ -156,53 +193,41 @@ int main(int argc, char* argv[]) {
 
     // Divide the volume into blocks
     int blockIndex = 0;
+    int startZ = 0;
     for (int bz = 0; bz < nz; ++bz) {
-        int startZ = bz * baseBlockSizeZ + std::min(bz, remainderZ);
-        int endZ = startZ + baseBlockSizeZ + (bz < remainderZ ? 1 : 0);
-
+        int bzSize = blockSizesZ[bz];
+        int startY = 0;
         for (int by = 0; by < ny; ++by) {
-            int startY = by * baseBlockSizeY + std::min(by, remainderY);
-            int endY = startY + baseBlockSizeY + (by < remainderY ? 1 : 0);
-
+            int bySize = blockSizesY[by];
+            int startX = 0;
             for (int bx = 0; bx < nx; ++bx) {
-                int startX = bx * baseBlockSizeX + std::min(bx, remainderX);
-                int endX = startX + baseBlockSizeX + (bx < remainderX ? 1 : 0);
-
-                int blockSizeX = endX - startX;
-                int blockSizeY = endY - startY;
-                int blockSizeZ = endZ - startZ;
+                int bxSize = blockSizesX[bx];
 
                 // Extract the block data
                 std::vector<char> blockData;
-                for (int z = startZ; z < endZ; ++z) {
-                    for (int y = startY; y < endY; ++y) {
+                for (int z = startZ; z < startZ + bzSize; ++z) {
+                    for (int y = startY; y < startY + bySize; ++y) {
                         size_t offset = ((size_t)z * volInfo.y_dim * volInfo.x_dim) + (y * volInfo.x_dim) + startX;
-                        size_t length = blockSizeX;
+                        size_t length = bxSize;
                         size_t dataOffset = offset * (volInfo.bit_resolution / 8);
                         blockData.insert(blockData.end(),
-                                         volumeData.begin() + dataOffset,
-                                         volumeData.begin() + dataOffset + length * (volInfo.bit_resolution / 8));
+                            volumeData.begin() + dataOffset,
+                            volumeData.begin() + dataOffset + length * (volInfo.bit_resolution / 8));
                     }
                 }
 
                 // Write the block data to a file
-                if (!writeBlockData(blockDirName, blockIndex, blockData, blockSizeX, blockSizeY, blockSizeZ,
+                if (!writeBlockData(blockDirName, blockIndex, blockData, bxSize, bySize, bzSize,
                                     volInfo, startX, startY, startZ)) {
                     return EXIT_FAILURE;
                 }
 
                 blockIndex++;
-                if (blockIndex >= numDivisions) {
-                    break;
-                }
+                startX += bxSize;
             }
-            if (blockIndex >= numDivisions) {
-                break;
-            }
+            startY += bySize;
         }
-        if (blockIndex >= numDivisions) {
-            break;
-        }
+        startZ += bzSize;
     }
 
     std::cout << "Volume divided into " << blockIndex << " blocks." << std::endl;
