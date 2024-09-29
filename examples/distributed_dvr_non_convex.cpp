@@ -128,7 +128,7 @@ int main(int argc, char* argv[]) {
 
     // Each process will load two blocks based on the assignment strategy
     int blockIndex1 = rank;            // From Group A (indices 0 to n-1)
-    int blockIndex2 = rank + numProcs; // From Group B (indices n to 2n-1)
+    int blockIndex2 = (2*numProcs) - 1 - rank; // From Group B (indices n to 2n-1)
 
     // Construct the file paths for the block data and info files
     std::string blockFileName1 = blocksDirectory + "/block_" + std::to_string(blockIndex1) + ".raw";
