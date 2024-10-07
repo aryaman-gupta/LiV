@@ -1,3 +1,4 @@
+#include <thread>
 #include "gtest/gtest.h"
 #include "utils/JVMUtils.h"
 
@@ -20,6 +21,14 @@ protected:
 
 TEST_F(JVMUtilsTest, CreatesJavaVMSuccessfully) {
     ASSERT_TRUE(createJavaVM(&jvm, &env, options, 1));
+}
+
+TEST_F(JVMUtilsTest, EnvIsFunctionalAfterJavaVMCreation) {
+    ASSERT_TRUE(createJavaVM(&jvm, &env, options, 1));
+    ASSERT_NE(env, nullptr);
+
+    jclass objectClass = env->FindClass("java/lang/Object");
+    ASSERT_NE(objectClass, nullptr);
 }
 
 TEST_F(JVMUtilsTest, FailsToCreateJavaVMWithInvalidOptions) {
