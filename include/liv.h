@@ -13,6 +13,8 @@
 #include "utils/JVMUtils.h"
 
 #define NUM_SUPERSEGMENTS 20
+#define DEFAULT_WIDTH 1280
+#define DEFAULT_HEIGHT 720
 
 namespace liv {
 
@@ -34,8 +36,7 @@ namespace liv {
         MPI_Comm livComm;
         MPI_Comm applicationComm;
 
-        //no default constructor
-        LiVEngine() = delete;
+        LiVEngine();
 
         LiVEngine(int windowWidth, int windowHeight);
 
@@ -53,7 +54,9 @@ namespace liv {
         return MPI_COMM_WORLD;
     }
 
-    inline LiVEngine::LiVEngine(int windowWidth = 1280, int windowHeight = 720) : wWidth(windowWidth), wHeight(windowHeight) {
+    inline LiVEngine::LiVEngine() : LiVEngine(DEFAULT_WIDTH, DEFAULT_HEIGHT) {}
+
+    inline LiVEngine::LiVEngine(int windowWidth, int windowHeight) : wWidth(windowWidth), wHeight(windowHeight) {
         std::cout << "Entering LiVEngine constructor" << std::endl;
         jvmData = new JVMData(windowWidth, windowHeight);
         std::cout << "Initialized jvmData" << std::endl;
@@ -107,9 +110,7 @@ namespace liv {
 
     template<typename T>
     void LiVEngine::createVolume(float *position, int *dimensions, int volumeID) const {
-        JNIEnv *env;
-        //TODO: can jvmData.env be used instead of attaching current thread, since we are in the same thread as the one that created the JVM?
-        jvmData->jvm->AttachCurrentThread(reinterpret_cast<void **>(&env), NULL);
+        JNIEnv *env = jvmData->env;
 
         jmethodID addVolumeMethod = findJvmMethod(env, jvmData->clazz, "addVolume", "(I[I[FZ)V");
 
@@ -122,23 +123,25 @@ namespace liv {
         env->CallVoidMethod(jvmData->obj, addVolumeMethod, volumeID, jdims, jpos, sizeof(T) == 2);
         // invokeVoidJvmMethod(env, jvmData->obj, addVolumeMethod, volumeID, jdims, jpos, sizeof(T) == 2);
 
-        jvmData->jvm->DetachCurrentThread();
     }
 
 
     template <typename T>
     void LiVEngine::updateVolume(T * buffer, long int buffer_size, int volumeID) const {
-        JNIEnv *env;
-        jvmData->jvm->AttachCurrentThread(reinterpret_cast<void **>(&env), NULL);
+        JNIEnv *env = jvmData->env;
 
         jmethodID updateVolumeMethod = findJvmMethod(env, jvmData->clazz, "updateVolume", "(ILjava/nio/ByteBuffer;)V");
 
         jobject jbuffer = env->NewDirectByteBuffer(buffer, buffer_size);
+        if(env->ExceptionOccurred()) {
+            std::cerr << __FILE__ << ":" << __LINE__ << " Error in allocating jbuffer." << std::endl;
+            env->ExceptionDescribe();
+            env->ExceptionClear();
+        }
         std::cout << "volume id is: " << volumeID << std::endl;
         env->CallVoidMethod(jvmData->obj, updateVolumeMethod, volumeID, jbuffer);
-        // invokeVoidJvmMethod(env, jvmData->obj, updateVolumeMethod, volumeID, jbuffer);
+//         invokeVoidJvmMethod(env, jvmData->obj, updateVolumeMethod, volumeID, jbuffer);
 
-        jvmData->jvm->DetachCurrentThread();
     }
 
     inline void LiVEngine::doRender() const {
