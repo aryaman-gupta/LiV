@@ -120,16 +120,13 @@ namespace liv {
         env->SetIntArrayRegion(jdims, 0, 3, dimensions);
         env->SetFloatArrayRegion(jpos, 0, 3, position);
 
-        env->CallVoidMethod(jvmData->obj, addVolumeMethod, volumeID, jdims, jpos, sizeof(T) == 2);
-        // invokeVoidJvmMethod(env, jvmData->obj, addVolumeMethod, volumeID, jdims, jpos, sizeof(T) == 2);
-
+        invokeVoidJvmMethod(env, jvmData->obj, addVolumeMethod, volumeID, jdims, jpos, sizeof(T) == 2);
     }
 
 
     template <typename T>
     void LiVEngine::updateVolume(T * buffer, long int buffer_size, int volumeID) const {
         JNIEnv *env = jvmData->env;
-
         jmethodID updateVolumeMethod = findJvmMethod(env, jvmData->clazz, "updateVolume", "(ILjava/nio/ByteBuffer;)V");
 
         jobject jbuffer = env->NewDirectByteBuffer(buffer, buffer_size);
@@ -139,9 +136,7 @@ namespace liv {
             env->ExceptionClear();
         }
         std::cout << "volume id is: " << volumeID << std::endl;
-        env->CallVoidMethod(jvmData->obj, updateVolumeMethod, volumeID, jbuffer);
-//         invokeVoidJvmMethod(env, jvmData->obj, updateVolumeMethod, volumeID, jbuffer);
-
+        invokeVoidJvmMethod(env, jvmData->obj, updateVolumeMethod, volumeID, jbuffer);
     }
 
     inline void LiVEngine::doRender() const {
