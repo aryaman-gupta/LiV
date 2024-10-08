@@ -27,11 +27,11 @@ namespace liv {
 
         template <typename T>
         void updateVolume(T * buffer, long int buffer_size, int volumeID) const;
-
         int wWidth;
         int wHeight;
     public:
         JVMData* jvmData;
+        RenderingManager* renderingManager;
         MPIBuffers mpiBuffers{};
         MPI_Comm livComm;
         MPI_Comm applicationComm;
@@ -43,6 +43,10 @@ namespace liv {
         static LiVEngine initialize(int windowWidth, int windowHeight);
 
         void doRender() const;
+
+        void setSceneConfigured() {
+            renderingManager->setSceneConfigured();
+        }
 
         template <typename T>
         friend class Volume;
@@ -59,6 +63,7 @@ namespace liv {
     inline LiVEngine::LiVEngine(int windowWidth, int windowHeight) : wWidth(windowWidth), wHeight(windowHeight) {
         std::cout << "Entering LiVEngine constructor" << std::endl;
         jvmData = new JVMData(windowWidth, windowHeight);
+        renderingManager = new RenderingManager(jvmData);
         std::cout << "Initialized jvmData" << std::endl;
         mpiBuffers = MPIBuffers();
         std::cout << "Initialized mpiBuffers" << std::endl;
@@ -110,6 +115,12 @@ namespace liv {
 
     template<typename T>
     void LiVEngine::createVolume(float *position, int *dimensions, int volumeID) const {
+
+        if(!renderingManager->isRendererConfigured()) {
+            std::cout << "Waiting for renderer to be configured" << std::endl;
+            renderingManager->waitRendererConfigured();
+        }
+
         JNIEnv *env = jvmData->env;
 
         jmethodID addVolumeMethod = findJvmMethod(env, jvmData->clazz, "addVolume", "(I[I[FZ)V");
@@ -140,19 +151,8 @@ namespace liv {
     }
 
     inline void LiVEngine::doRender() const {
-
         std::cout << "In doRender function!" << std::endl;
-
-        JNIEnv *env;
-
-        jvmData->jvm->AttachCurrentThread(reinterpret_cast<void **>(&env), nullptr);
-
-        jmethodID mainMethod = findJvmMethod(env, jvmData->clazz, "main", "()V");
-        if(mainMethod != nullptr) {
-            invokeVoidJvmMethod(env, jvmData->obj, mainMethod);
-        }
-
-        jvmData->jvm->DetachCurrentThread();
+        renderingManager->doRender();
     }
 
 
@@ -203,7 +203,7 @@ namespace liv {
         if(livEngine != nullptr) {
             livEngine->createVolume<T>(position, dimensions, id);
         } else {
-            std::cerr << __FILE__ << __LINE__ << "ERROR: LiVEngine is not correctly initialized. The volume will"
+            std::cerr << __FILE__ << __LINE__ << "ERROR: LiVEngine is not correctly initialized. The volume will "
                                                  "not be updated in the rendering scenegraph" << std::endl;
         }
 
