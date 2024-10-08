@@ -189,7 +189,7 @@ int main(int argc, char* argv[]) {
     std::cout << "    Size: " << blockInfo2.sizeX << " x " << blockInfo2.sizeY << " x " << blockInfo2.sizeZ << std::endl;
     std::cout << "    Position: (" << blockInfo2.posX << ", " << blockInfo2.posY << ", " << blockInfo2.posZ << ")" << std::endl;
 
-    std::thread renderThread(doRender, std::ref(*livEngine.jvmData));
+    std::thread renderThread([&livEngine]() { livEngine.doRender(); });
 
     float position1[3] = {blockInfo1.posX, blockInfo1.posY, blockInfo1.posZ};
     int dimensions1[3] = {blockInfo1.sizeX, blockInfo1.sizeY, blockInfo1.sizeZ};
@@ -203,7 +203,7 @@ int main(int argc, char* argv[]) {
     volume1.update(reinterpret_cast<datatype*>(blockData1.data()), blockData1.size());
     volume2.update(reinterpret_cast<datatype*>(blockData2.data()), blockData2.size());
 
-    setSceneConfigured(*livEngine.jvmData);
+    livEngine.setSceneConfigured();
 
     renderThread.join();
 

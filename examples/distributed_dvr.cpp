@@ -149,13 +149,13 @@ int main(int argc, char* argv[]) {
     float position[3] = {blockInfo.posX, blockInfo.posY, blockInfo.posZ};
     int dimensions[3] = {blockInfo.sizeX, blockInfo.sizeY, blockInfo.sizeZ};
 
-    std::thread renderThread(doRender, std::ref(*livEngine.jvmData));
+    std::thread renderThread([&livEngine]() { livEngine.doRender(); });
 
     auto volume = liv::createVolume<datatype>(position, dimensions, &livEngine);
 
     volume.update(reinterpret_cast<datatype*>(blockData.data()), blockData.size());
 
-    setSceneConfigured(*livEngine.jvmData);
+    livEngine.setSceneConfigured();
 
     renderThread.join();
 
