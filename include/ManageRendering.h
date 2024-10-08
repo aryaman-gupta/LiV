@@ -6,12 +6,27 @@
 #define MANAGERENDERING_H
 
 #include "JVMData.h"
-#include <mpi.h>
+namespace liv {
 
-void doRender(JVMData& jvmData);
-void setSceneConfigured(JVMData& jvmData);
-void waitRendererConfigured(const JVMData& jvmData);
-void stopRendering(const JVMData& jvmData);
-void setupICET(int windowWidth, int windowHeight, MPI_Comm comm);
+    class RenderingManager {
+        bool rendererConfigured = false;
+        JVMData* jvmData;
 
+    public:
+        explicit RenderingManager(JVMData* jvmData) : jvmData(jvmData) {}
+
+        [[nodiscard]] bool isRendererConfigured() const;
+
+        void doRender();
+
+        void setSceneConfigured();
+
+        void waitRendererConfigured();
+
+        void stopRendering();
+
+        void setupICET();
+
+    };
+}
 #endif //MANAGERENDERING_H
