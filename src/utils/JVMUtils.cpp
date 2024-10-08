@@ -44,7 +44,6 @@ jmethodID findJvmMethod(JNIEnv *env, jclass clazz, const char* name, const char*
 void invokeVoidJvmMethod(JNIEnv *env, jobject obj, jmethodID methodID, ...) {
     va_list args;
     va_start(args,methodID);
-    std::cout << "arguments are: " << args << std::endl;
     env->CallVoidMethodV(obj, methodID, args);
     if(env->ExceptionOccurred()) {
         std::cerr << "Error in invoking JVM method." << std::endl;
