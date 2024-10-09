@@ -2,7 +2,7 @@
 // Created by aryaman on 22.04.24.
 //
 #include <iostream>
-#include "../include/MPINatives.h"
+#include "MPINatives.h"
 #include <cmath>
 
 #include <mpi.h>
@@ -158,6 +158,7 @@ void distributeDenseVDIs(JNIEnv *e, jobject clazzObject, jobject colorVDI, jobje
     void * recvBufPrefix = reinterpret_cast<void *>(prefixPointer);
     void *ptrPrefix = e->GetDirectBufferAddress(prefixSums);
 
+    //Distribute the prefix sums
     MPI_Alltoall(ptrPrefix, windowWidth * windowHeight * 4 / commSize, MPI_BYTE, recvBufPrefix, windowWidth * windowHeight * 4 / commSize, MPI_BYTE, libLiV::visualizationComm);
 
 #if PROFILING

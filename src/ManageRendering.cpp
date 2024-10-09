@@ -2,7 +2,7 @@
 // Created by aryaman on 24.04.24.
 //
 
-#include "../include/ManageRendering.h"
+#include "ManageRendering.h"
 #include <iostream>
 
 namespace liv {
