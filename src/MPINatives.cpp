@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <chrono>
 
+MPI_Comm visualizationComm = MPI_COMM_WORLD; //TODO: Change this to the actual communicator
+
 void compositePlaceholder(JNIEnv *e, jobject clazzObject, jobject subImage, jint myRank, jint commSize, jfloatArray camPos, jlong imagePointer) {
     std::cout << "In the composite placeholder function." << std::endl;
 }
@@ -81,7 +83,7 @@ int distributeVariable(int *counts, int *countsRecv, void * sendBuf, void * recv
     std::cout<<"Performing distribution of " << purpose <<std::endl;
 #endif
 
-    MPI_Alltoall(counts, 1, MPI_INT, countsRecv, 1, MPI_INT, libLiV::visualizationComm);
+    MPI_Alltoall(counts, 1, MPI_INT, countsRecv, 1, MPI_INT, visualizationComm);
 
     //set up the AllToAllv
     int displacementSendSum = 0;
@@ -91,7 +93,7 @@ int distributeVariable(int *counts, int *countsRecv, void * sendBuf, void * recv
     int displacementRecv[commSize];
 
     int rank;
-    MPI_Comm_rank(libLiV::visualizationComm, &rank);
+    MPI_Comm_rank(visualizationComm, &rank);
 
     for( int i = 0 ; i < commSize ; i ++){
         displacementSend[i] = displacementSendSum;
@@ -110,12 +112,12 @@ int distributeVariable(int *counts, int *countsRecv, void * sendBuf, void * recv
         recvBuf = malloc(sum);
     }
 
-    MPI_Alltoallv(sendBuf, counts, displacementSend, MPI_BYTE, recvBuf, countsRecv, displacementRecv, MPI_BYTE, libLiV::visualizationComm);
+    MPI_Alltoallv(sendBuf, counts, displacementSend, MPI_BYTE, recvBuf, countsRecv, displacementRecv, MPI_BYTE, visualizationComm);
 
     return displacementRecvSum;
 }
 
-void distributeDenseVDIs(JNIEnv *e, jobject clazzObject, jobject colorVDI, jobject depthVDI, jobject prefixSums, jintArray supersegmentCounts, jint commSize, jlong colPointer, jlong depthPointer, jlong prefixPointer, jlong mpiPointer) {
+void distributeDenseVDIs(JNIEnv *e, jobject clazzObject, jobject colorVDI, jobject depthVDI, jobject prefixSums, jintArray supersegmentCounts, jint commSize, jlong colPointer, jlong depthPointer, jlong prefixPointer, jlong mpiPointer, jint windowWidth, jint windowHeight) {
 #if VERBOSE
     std::cout<<"In distribute dense VDIs function. Comm size is "<<commSize<<std::endl;
 #endif
@@ -159,7 +161,7 @@ void distributeDenseVDIs(JNIEnv *e, jobject clazzObject, jobject colorVDI, jobje
     void *ptrPrefix = e->GetDirectBufferAddress(prefixSums);
 
     //Distribute the prefix sums
-    MPI_Alltoall(ptrPrefix, windowWidth * windowHeight * 4 / commSize, MPI_BYTE, recvBufPrefix, windowWidth * windowHeight * 4 / commSize, MPI_BYTE, libLiV::visualizationComm);
+    MPI_Alltoall(ptrPrefix, windowWidth * windowHeight * 4 / commSize, MPI_BYTE, recvBufPrefix, windowWidth * windowHeight * 4 / commSize, MPI_BYTE, visualizationComm);
 
 #if PROFILING
     {
@@ -271,162 +273,4 @@ void distributeDenseVDIs(JNIEnv *e, jobject clazzObject, jobject colorVDI, jobje
         e->ExceptionDescribe();
         e->ExceptionClear();
     }
-}
-
-void compositeImages(JNIEnv *e, jobject clazzObject, jobject subImage, jint myRank, jint commSize, jfloatArray camPos, jlong imagePointer) {
-#if VERBOSE
-    std::cout<<"In image compositing function. Comm size is "<<commSize<<std::endl;
-    IceTInt global_viewport[4];
-    icetGetIntegerv(ICET_GLOBAL_VIEWPORT, global_viewport);
-
-    std::cout<<"The global viewport is: width: "<<global_viewport[2] << " height: " << global_viewport[3] <<std::endl;
-#endif
-
-    IceTFloat background_color[4] = { 0.0, 0.0, 0.0, 0.0 };
-
-    void *imageBuffer = e->GetDirectBufferAddress(subImage);
-    if(e->ExceptionOccurred()) {
-        e->ExceptionDescribe();
-        e->ExceptionClear();
-    }
-
-    std::cout<< "got the image buffer" << std::endl;
-
-    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-    icetSetDepthFormat(ICET_IMAGE_DEPTH_NONE);
-
-    icetStrategy(ICET_STRATEGY_SEQUENTIAL);
-//    icetSingleImageStrategy(ICET_SINGLE_IMAGE_STRATEGY_RADIXKR)
-
-    IceTImage image;
-
-    icetSetColorFormat(ICET_IMAGE_COLOR_RGBA_UBYTE);
-    icetCompositeMode(ICET_COMPOSITE_MODE_BLEND);
-    icetEnable(ICET_ORDERED_COMPOSITE);
-
-    int order[commSize];
-
-    std::cout << "Fetching the camera coordinates" << std::endl;
-
-    float * cam = e->GetFloatArrayElements(camPos, NULL);
-    if(e->ExceptionOccurred()) {
-        e->ExceptionDescribe();
-        e->ExceptionClear();
-    }
-
-    std::cout << "Got the camera coordinates!" << std::endl;
-
-    std::vector<float> distances;
-    std::vector<int> procs;
-
-    for(int i = 0; i < commSize; i++) {
-        float distance = std::sqrt(
-                (proc_positions[i][0] - cam[0])*(proc_positions[i][0] - cam[0]) +
-                (proc_positions[i][1] - cam[1])*(proc_positions[i][1] - cam[1]) +
-                (proc_positions[i][2] - cam[2])*(proc_positions[i][2] - cam[2])
-        );
-        distances.push_back(distance);
-
-        procs.push_back(i);
-    }
-
-#if VERBOSE
-    std::cout << "Cam pos: " << cam[0] << " " << cam[1] << " " << cam[2] << std::endl;
-
-    if(myRank == 0) {
-        for(int k = 0; k < commSize; k++) {
-            std::cout << "Proc: " << k << " has centroid: " << proc_positions[k][0] << " " << proc_positions[k][1] << " " << proc_positions[k][2] << std::endl;
-            std::cout << "Distance of proc " << k << ": " << distances[k] << std::endl;
-        }
-    }
-#endif
-
-    std::sort(procs.begin(), procs.end(), [&](int i, int j){return distances[i] < distances[j];});
-
-
-    for(int i = 0; i < commSize; i++) {
-        order[i] = procs[i];
-    }
-
-
-    icetCompositeOrder(order);
-
-    auto begin_comp = std::chrono::high_resolution_clock::now();
-
-    image = icetCompositeImage(
-            imageBuffer,
-            NULL,
-            NULL,
-            NULL,
-            NULL,
-            background_color
-    );
-
-#if PROFILING
-    auto end_comp = std::chrono::high_resolution_clock::now();
-
-    auto elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(end_comp - begin_comp);
-    auto elapsed_frame = std::chrono::duration_cast<std::chrono::nanoseconds>(end_comp - begin);
-#endif
-    if(myRank == 0) {
-#if PROFILING
-        auto compTime = (elapsed.count()) * 1e-9;
-        auto frameTime = (elapsed_frame.count()) * 1e-9;
-
-        std :: cout << "Frame time: " << frameTime << " of which compositing time: " << compTime << " so dvr time should be: " << (frameTime-compTime) << std::endl;
-#endif
-        const char *color_buffer = (char *)icetImageGetColorcui(image);
-
-        IceTSizeType width;
-        IceTSizeType height;
-        width = icetImageGetWidth(image);
-        height = icetImageGetHeight(image);
-
-#if VERBOSE
-        std::cout << "Composited the image with dimensions: " << width << " " << height << std::endl;
-#endif
-
-        std::string dataset = datasetName;
-
-        dataset += "_" + std::to_string(commSize) + "_" + std::to_string(myRank);
-
-        std::string basePath = "/home/aryaman/TestingData/";
-
-        if (!benchmarking && (count % 10) == 0) {
-
-            std::cout << "Writing the composited image " << count << " now" << std::endl;
-
-            std::string filename = basePath + dataset + "FinalImage_" + std::to_string(count) + ".raw";
-
-            std::ofstream b_stream(filename.c_str(),
-                                   std::fstream::out | std::fstream::binary);
-            if (b_stream) {
-                b_stream.write(static_cast<const char *>(color_buffer),
-                               windowHeight * windowWidth * 4);
-
-                if (b_stream.good()) {
-                    std::cout << "Writing was successful" << std::endl;
-                }
-            }
-        }
-        count++;
-
-        jclass clazz = e->GetObjectClass(clazzObject);
-        jmethodID displayMethod = e->GetMethodID(clazz, "displayComposited", "(Ljava/nio/ByteBuffer;)V");
-
-        jobject bbCcomposited = e->NewDirectByteBuffer((void *)color_buffer, windowHeight * windowWidth * 4);
-        if(e->ExceptionOccurred()) {
-            e->ExceptionDescribe();
-            e->ExceptionClear();
-        }
-
-        e->CallVoidMethod(clazzObject, displayMethod, bbCcomposited);
-        if(e->ExceptionOccurred()) {
-            e->ExceptionDescribe();
-            e->ExceptionClear();
-        }
-    }
-#if PROFILING
-    begin = std::chrono::high_resolution_clock::now();
-#endif
 }
