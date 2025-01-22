@@ -44,6 +44,18 @@ namespace liv {
 
         void doRender() const;
 
+        void setVolumeDimensions(const std::vector<int>& dimensions) const {
+            renderingManager->setVolumeDimensions(dimensions);
+        }
+
+        [[nodiscard]] float getVolumeScaling() const {
+            return renderingManager->getVolumeScaling();
+        }
+
+        void addProcessorData(int processorID, const std::vector<float>& origin, const std::vector<float>& dimensions) const {
+            renderingManager->addProcessorData(processorID, origin, dimensions);
+        }
+
         void setSceneConfigured() {
             renderingManager->setSceneConfigured();
         }
@@ -62,7 +74,21 @@ namespace liv {
 
     inline LiVEngine::LiVEngine(int windowWidth, int windowHeight) : wWidth(windowWidth), wHeight(windowHeight) {
         std::cout << "Entering LiVEngine constructor" << std::endl;
-        jvmData = new JVMData(windowWidth, windowHeight);
+
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+        int num_processes;
+        MPI_Comm_size(MPI_COMM_WORLD, &num_processes);
+
+        MPI_Comm nodeComm;
+        MPI_Comm_split_type( MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank,
+                             MPI_INFO_NULL, &nodeComm );
+
+        int node_rank;
+        MPI_Comm_rank(nodeComm,&node_rank);
+
+        jvmData = new JVMData(windowWidth, windowHeight, rank, num_processes, node_rank);
         renderingManager = new RenderingManager(jvmData);
         std::cout << "Initialized jvmData" << std::endl;
         mpiBuffers = MPIBuffers();
@@ -79,35 +105,9 @@ namespace liv {
 
         std::cout << "Got MPI thread level: " << provided << std::endl;
 
-        int rank;
-        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
-        int num_processes;
-        MPI_Comm_size(MPI_COMM_WORLD, &num_processes);
-
-        MPI_Comm nodeComm;
-        MPI_Comm_split_type( MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, rank,
-                             MPI_INFO_NULL, &nodeComm );
-
-        int node_rank;
-        MPI_Comm_rank(nodeComm,&node_rank);
-
         auto liv = LiVEngine(windowWidth, windowHeight);
 
         liv.livComm = liv.setupCommunicators();
-
-        //replace with new
-        liv.mpiBuffers.allToAllColorPointer = malloc(windowHeight * windowWidth * NUM_SUPERSEGMENTS * 4 * 4);
-        liv.mpiBuffers.allToAllDepthPointer = malloc(windowWidth * windowHeight * NUM_SUPERSEGMENTS * 4 * 2);
-        liv.mpiBuffers.allToAllPrefixPointer = malloc(windowWidth * windowHeight * 4);
-        liv.mpiBuffers.gatherColorPointer = malloc(windowHeight * windowWidth * NUM_SUPERSEGMENTS * 4 * 4);
-        liv.mpiBuffers.gatherDepthPointer = malloc(windowHeight * windowWidth * NUM_SUPERSEGMENTS * 4 * 2);
-
-        registerNativeFunctions(*liv.jvmData, liv.mpiBuffers, liv.livComm);
-
-        setMPIParams(*liv.jvmData, rank, node_rank, num_processes);
-
-        // setupICET(windowWidth, windowHeight, liv.livComm);
 
         return liv;
     }

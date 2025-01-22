@@ -6,6 +6,7 @@
 #define MANAGERENDERING_H
 
 #include "JVMData.h"
+#include <vector>
 namespace liv {
 
     class RenderingManager {
@@ -19,6 +20,12 @@ namespace liv {
 
         void doRender();
 
+        void setVolumeDimensions(const std::vector<int>& dimensions);
+
+        float getVolumeScaling();
+
+        void addProcessorData(int processorID, const std::vector<float>& origin, const std::vector<float>& dimensions);
+
         void setSceneConfigured();
 
         void waitRendererConfigured();
@@ -26,7 +33,6 @@ namespace liv {
         void stopRendering();
 
         void setupICET();
-
     };
 }
 #endif //MANAGERENDERING_H
