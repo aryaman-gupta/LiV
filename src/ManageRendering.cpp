@@ -135,9 +135,10 @@ namespace liv {
         JNIEnv *env;
         env = jvmData->env;
 
-        jmethodID rendererMethod = findJvmMethod(env, jvmData->clazz, "waitRendererReady", "()V");
+        jclass superClass = env->GetSuperclass(jvmData->clazz);
+        jmethodID waitRendererReadyMethod = findJvmMethod(env, superClass, "waitRendererReady", "()V");
 
-        invokeVoidJvmMethod(env, jvmData->obj, rendererMethod);
+        invokeVoidJvmMethod(env, jvmData->obj, waitRendererReadyMethod);
         rendererConfigured = true;
     }
 
