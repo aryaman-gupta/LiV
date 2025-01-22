@@ -27,11 +27,11 @@ public:
     jobject obj;
     JNIEnv *env;
 
-    explicit JVMData(int windowWidth, int windowHeight);
+    explicit JVMData(int windowWidth, int windowHeight, int rank, int commSize, int nodeRank);
 };
 
-inline JVMData::JVMData(int windowWidth, int windowHeight) {
-    std::string className = "DistributedVolumeRenderer";
+inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSize, int nodeRank) {
+    std::string className = "ConvexVolumesInterface";
 
     DIR *dir;
     struct dirent *ent;
@@ -54,7 +54,7 @@ inline JVMData::JVMData(int windowWidth, int windowHeight) {
         std::exit(EXIT_FAILURE);
     }
 
-    className = "graphics/scenery/" + className;
+    className = "graphics/scenery/tests/interfaces/" + className;
 
     JavaVMInitArgs vm_args;                // Initialization arguments
     int num_options = 7;
@@ -128,7 +128,7 @@ inline JVMData::JVMData(int windowWidth, int windowHeight) {
 
     std::cout << "Class found " << className << std::endl;
 
-    jmethodID constructor = env->GetMethodID(localClass, "<init>", "(II)V");  // find constructor
+    jmethodID constructor = env->GetMethodID(localClass, "<init>", "(IIIII)V");  // find constructor
     if (constructor == nullptr) {
         if( env->ExceptionOccurred() ) {
             env->ExceptionDescribe();
@@ -142,7 +142,7 @@ inline JVMData::JVMData(int windowWidth, int windowHeight) {
 
     //if constructor found, continue
     jobject localObj;
-    localObj = env->NewObject(localClass, constructor, windowWidth, windowHeight);
+    localObj = env->NewObject(localClass, constructor, windowWidth, windowHeight, rank, commSize, nodeRank);
     if(env->ExceptionOccurred()) {
         env->ExceptionDescribe();
         env->ExceptionClear();
