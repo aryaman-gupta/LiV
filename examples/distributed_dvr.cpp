@@ -7,8 +7,9 @@
 #include <sys/stat.h>
 #include <liv.h>
 #include <thread>
+#include <filesystem>
 
-typedef unsigned short datatype;
+typedef char datatype;
 
 struct BlockInfo {
     int sizeX;
@@ -91,6 +92,35 @@ int main(int argc, char* argv[]) {
 
     std::string dataDirectory = argv[1];
 
+    std::string infoFilePath;
+    for (const auto& entry : std::filesystem::directory_iterator(dataDirectory)) {
+        if (entry.path().extension() == ".info") {
+            infoFilePath = entry.path().string();
+            break;
+        }
+    }
+    if (infoFilePath.empty()) {
+        std::cerr << "Error: No .info file found in directory: " << dataDirectory << ". Please ensure that there is a .info file containing the dimensions of the dataset as comma-seperated integers." << std::endl;
+        MPI_Finalize();
+        return EXIT_FAILURE;
+    }
+    std::ifstream infoFile(infoFilePath);
+    if (!infoFile.is_open()) {
+        std::cerr << "Error: Could not open info file: " << infoFilePath << std::endl;
+        MPI_Finalize();
+        return EXIT_FAILURE;
+    }
+
+    std::string line;
+    std::getline(infoFile, line);
+    std::stringstream ss(line);
+    std::vector<int> datasetDimensions;
+    std::string value;
+    while (std::getline(ss, value, ',')) {
+        datasetDimensions.push_back(std::stoi(value));
+    }
+    infoFile.close();
+
     // Construct the blocks directory path
     std::string blocksDirectory = dataDirectory + "/blocks" + std::to_string(numProcs);
 
@@ -129,7 +159,13 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    float pixelToWorld = 3.84f/1024.0f;
+    std::thread renderThread([&livEngine]() { livEngine.doRender(); });
+
+    livEngine.setVolumeDimensions(datasetDimensions);
+
+    float pixelToWorld = livEngine.getVolumeScaling();
+
+    livEngine.addProcessorData(rank, {blockInfo.posX, blockInfo.posY, blockInfo.posZ}, {static_cast<float>(blockInfo.sizeX), static_cast<float>(blockInfo.sizeY), static_cast<float>(blockInfo.sizeZ)});
 
     blockInfo.posX *= pixelToWorld;
     blockInfo.posY *= (-1 * pixelToWorld);
@@ -148,8 +184,6 @@ int main(int argc, char* argv[]) {
 
     float position[3] = {blockInfo.posX, blockInfo.posY, blockInfo.posZ};
     int dimensions[3] = {blockInfo.sizeX, blockInfo.sizeY, blockInfo.sizeZ};
-
-    std::thread renderThread([&livEngine]() { livEngine.doRender(); });
 
     auto volume = liv::createVolume<datatype>(position, dimensions, &livEngine);
 
