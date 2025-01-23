@@ -26,6 +26,10 @@ namespace liv {
 
         void addProcessorData(int processorID, const std::vector<float>& origin, const std::vector<float>& dimensions);
 
+        void addVolume(int volumeID, const std::vector<int>& dimensions, const std::vector<float>& position, bool is16BitData);
+
+        void updateVolume(int volumeID, char* volumeBuffer);
+
         void setSceneConfigured();
 
         void waitRendererConfigured();

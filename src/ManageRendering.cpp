@@ -118,27 +118,92 @@ namespace liv {
         jvmData->jvm->DetachCurrentThread();
     }
 
+    void RenderingManager::addVolume(int volumeID, const std::vector<int>& dimensions, const std::vector<float>& position, bool is16BitData) {
+        if (dimensions.size() != 3 || position.size() != 3) {
+            std::cerr << "ERROR: Dimensions and position vectors must contain exactly 3 elements." << std::endl;
+            return;
+        }
+
+        JNIEnv *env;
+        jvmData->jvm->AttachCurrentThread(reinterpret_cast<void **>(&env), NULL);
+
+        jclass superClass = env->GetSuperclass(jvmData->clazz);
+        jmethodID addVolumeMethod = findJvmMethod(env, superClass, "addVolume", "(I[I[FZ)V");
+
+        jintArray jdims = env->NewIntArray(3);
+        jfloatArray jpos = env->NewFloatArray(3);
+
+        env->SetIntArrayRegion(jdims, 0, 3, dimensions.data());
+        env->SetFloatArrayRegion(jpos, 0, 3, position.data());
+
+        env->CallVoidMethod(jvmData->obj, addVolumeMethod, volumeID, jdims, jpos, is16BitData);
+
+        if (env->ExceptionOccurred()) {
+            std::cerr << "ERROR in calling addVolume!" << std::endl;
+            env->ExceptionDescribe();
+            env->ExceptionClear();
+        }
+
+        env->DeleteLocalRef(jdims);
+        env->DeleteLocalRef(jpos);
+
+        jvmData->jvm->DetachCurrentThread();
+    }
+
+
+    void RenderingManager::updateVolume(int volumeID, char* volumeBuffer) {
+        JNIEnv *env;
+        jvmData->jvm->AttachCurrentThread(reinterpret_cast<void **>(&env), NULL);
+
+        jclass superClass = env->GetSuperclass(jvmData->clazz);
+        jmethodID updateVolumeMethod = findJvmMethod(env, superClass, "updateVolume", "(ILjava/nio/ByteBuffer;)V");
+
+        jobject jbuffer = env->NewDirectByteBuffer(volumeBuffer, sizeof(volumeBuffer));
+        env->CallVoidMethod(jvmData->obj, updateVolumeMethod, volumeID, jbuffer);
+
+        if (env->ExceptionOccurred()) {
+            std::cerr << "ERROR in calling updateVolume!" << std::endl;
+            env->ExceptionDescribe();
+            env->ExceptionClear();
+        }
+
+        jvmData->jvm->DetachCurrentThread();
+    }
+
+
     void RenderingManager::setSceneConfigured() {
         JNIEnv *env;
         jvmData->jvm->AttachCurrentThread(reinterpret_cast<void **>(&env), NULL);
 
-        jboolean ready = true;
-        jfieldID readyField = env->GetFieldID(jvmData->clazz, "rendererConfigured", "Z");
-        env->SetBooleanField(jvmData->obj, readyField, ready);
+        jclass superClass = env->GetSuperclass(jvmData->clazz);
+        jfieldID fieldID = env->GetFieldID(superClass, "sceneSetupComplete", "Ljava/util/concurrent/atomic/AtomicBoolean;");
+
+
+        jobject atomicBooleanObj = env->GetObjectField(jvmData->obj, fieldID);
+        jclass atomicBooleanClass = env->GetObjectClass(atomicBooleanObj);
+        jmethodID setMethodID = env->GetMethodID(atomicBooleanClass, "set", "(Z)V");
+        env->CallVoidMethod(atomicBooleanObj, setMethodID, true);
+
         if (env->ExceptionOccurred()) {
             env->ExceptionDescribe();
             env->ExceptionClear();
         }
+
+        jvmData->jvm->DetachCurrentThread();
     }
 
     void RenderingManager::waitRendererConfigured() {
         JNIEnv *env;
         env = jvmData->env;
 
+        jvmData->jvm->AttachCurrentThread(reinterpret_cast<void **>(&env), NULL);
+
         jclass superClass = env->GetSuperclass(jvmData->clazz);
         jmethodID waitRendererReadyMethod = findJvmMethod(env, superClass, "waitRendererReady", "()V");
 
         invokeVoidJvmMethod(env, jvmData->obj, waitRendererReadyMethod);
+
+        jvmData->jvm->DetachCurrentThread();
         rendererConfigured = true;
     }
 
