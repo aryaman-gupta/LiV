@@ -162,10 +162,9 @@ int main(int argc, char* argv[]) {
     std::thread renderThread([&livEngine]() { livEngine.doRender(); });
 
     livEngine.setVolumeDimensions(datasetDimensions);
+    livEngine.addProcessorData(rank, {blockInfo.posX, blockInfo.posY, blockInfo.posZ}, {static_cast<float>(blockInfo.sizeX), static_cast<float>(blockInfo.sizeY), static_cast<float>(blockInfo.sizeZ)});
 
     float pixelToWorld = livEngine.getVolumeScaling();
-
-    livEngine.addProcessorData(rank, {blockInfo.posX, blockInfo.posY, blockInfo.posZ}, {static_cast<float>(blockInfo.sizeX), static_cast<float>(blockInfo.sizeY), static_cast<float>(blockInfo.sizeZ)});
 
     blockInfo.posX *= pixelToWorld;
     blockInfo.posY *= (-1 * pixelToWorld);
@@ -190,6 +189,9 @@ int main(int argc, char* argv[]) {
     volume.update(reinterpret_cast<datatype*>(blockData.data()), blockData.size());
 
     livEngine.setSceneConfigured();
+
+    // Allow some time for the rendering to take place
+    std::this_thread::sleep_for(std::chrono::seconds(100));
 
     renderThread.join();
 
