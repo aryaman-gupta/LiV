@@ -57,8 +57,8 @@ inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSiz
     className = "graphics/scenery/tests/interfaces/" + className;
 
     JavaVMInitArgs vm_args;                // Initialization arguments
-    int num_options = 7;
-    auto *options = new JavaVMOption[7];   // JVM invocation options
+    int num_options = 8;
+    auto *options = new JavaVMOption[num_options];   // JVM invocation options
     options[0].optionString = (char *)classPath.c_str();
 
     options[1].optionString = (char *)
@@ -92,6 +92,8 @@ inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSiz
     options[6].optionString = (char *)
             (option2).c_str();
 
+    options[7].optionString = (char *)
+            "-Djava.library.path=/usr/local/lib/";
 
     vm_args.version = JNI_VERSION_21;
     vm_args.nOptions = num_options;
