@@ -121,33 +121,16 @@ namespace liv {
             renderingManager->waitRendererConfigured();
         }
 
-        JNIEnv *env = jvmData->env;
-
-        jmethodID addVolumeMethod = findJvmMethod(env, jvmData->clazz, "addVolume", "(I[I[FZ)V");
-
-        jintArray jdims = env->NewIntArray(3);
-        jfloatArray jpos = env->NewFloatArray(3);
-
-        env->SetIntArrayRegion(jdims, 0, 3, dimensions);
-        env->SetFloatArrayRegion(jpos, 0, 3, position);
-
-        invokeVoidJvmMethod(env, jvmData->obj, addVolumeMethod, volumeID, jdims, jpos, sizeof(T) == 2);
+        renderingManager->addVolume(volumeID, {dimensions[0], dimensions[1], dimensions[2]},
+            {position[0], position[1], position[2]}, sizeof(T) == 2);
     }
 
 
     template <typename T>
     void LiVEngine::updateVolume(T * buffer, long int buffer_size, int volumeID) const {
-        JNIEnv *env = jvmData->env;
-        jmethodID updateVolumeMethod = findJvmMethod(env, jvmData->clazz, "updateVolume", "(ILjava/nio/ByteBuffer;)V");
-
-        jobject jbuffer = env->NewDirectByteBuffer(buffer, buffer_size);
-        if(env->ExceptionOccurred()) {
-            std::cerr << __FILE__ << ":" << __LINE__ << " Error in allocating jbuffer." << std::endl;
-            env->ExceptionDescribe();
-            env->ExceptionClear();
-        }
         std::cout << "volume id is: " << volumeID << std::endl;
-        invokeVoidJvmMethod(env, jvmData->obj, updateVolumeMethod, volumeID, jbuffer);
+
+        renderingManager->updateVolume(volumeID, reinterpret_cast<char*>(buffer));
     }
 
     inline void LiVEngine::doRender() const {
