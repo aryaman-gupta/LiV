@@ -92,8 +92,12 @@ inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSiz
     options[6].optionString = (char *)
             (option2).c_str();
 
+    auto icet_jni_lib_path = (getEnvVar("ICET_JNI_LIB_PATH", false) == nullptr) ? "/usr/local/lib/" : getEnvVar("ICET_JNI_LIB_PATH");
+
+    std::string icet_option = std::string("-Djava.library.path=") + icet_jni_lib_path;
+
     options[7].optionString = (char *)
-            "-Djava.library.path=/usr/local/lib/";
+            (icet_option).c_str();
 
     vm_args.version = JNI_VERSION_21;
     vm_args.nOptions = num_options;
