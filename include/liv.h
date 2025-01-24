@@ -130,7 +130,7 @@ namespace liv {
     void LiVEngine::updateVolume(T * buffer, long int buffer_size, int volumeID) const {
         std::cout << "volume id is: " << volumeID << std::endl;
 
-        renderingManager->updateVolume(volumeID, reinterpret_cast<char*>(buffer));
+        renderingManager->updateVolume(volumeID, reinterpret_cast<char *>(buffer), buffer_size);
     }
 
     inline void LiVEngine::doRender() const {

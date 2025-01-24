@@ -151,14 +151,14 @@ namespace liv {
     }
 
 
-    void RenderingManager::updateVolume(int volumeID, char* volumeBuffer) {
+    void RenderingManager::updateVolume(int volumeID, char *volumeBuffer, long bufferSize) {
         JNIEnv *env;
         jvmData->jvm->AttachCurrentThread(reinterpret_cast<void **>(&env), NULL);
 
         jclass superClass = env->GetSuperclass(jvmData->clazz);
         jmethodID updateVolumeMethod = findJvmMethod(env, superClass, "updateVolume", "(ILjava/nio/ByteBuffer;)V");
 
-        jobject jbuffer = env->NewDirectByteBuffer(volumeBuffer, sizeof(volumeBuffer));
+        jobject jbuffer = env->NewDirectByteBuffer(volumeBuffer, bufferSize);
         env->CallVoidMethod(jvmData->obj, updateVolumeMethod, volumeID, jbuffer);
 
         if (env->ExceptionOccurred()) {

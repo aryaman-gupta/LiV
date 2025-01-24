@@ -28,7 +28,7 @@ namespace liv {
 
         void addVolume(int volumeID, const std::vector<int>& dimensions, const std::vector<float>& position, bool is16BitData);
 
-        void updateVolume(int volumeID, char* volumeBuffer);
+        void updateVolume(int volumeID, char *volumeBuffer, long bufferSize);
 
         void setSceneConfigured();
 
