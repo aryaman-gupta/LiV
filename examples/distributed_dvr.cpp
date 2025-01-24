@@ -162,7 +162,19 @@ int main(int argc, char* argv[]) {
     std::thread renderThread([&livEngine]() { livEngine.doRender(); });
 
     livEngine.setVolumeDimensions(datasetDimensions);
-    livEngine.addProcessorData(rank, {blockInfo.posX, blockInfo.posY, blockInfo.posZ}, {static_cast<float>(blockInfo.sizeX), static_cast<float>(blockInfo.sizeY), static_cast<float>(blockInfo.sizeZ)});
+
+    //set the processor dimensions for all ranks
+
+    std::vector<BlockInfo> allBlockInfos(numProcs);
+
+    for (int i = 0; i < numProcs; ++i) {
+        std::string blockInfoFileName = blocksDirectory + "/block_" + std::to_string(i) + ".info";
+        if (!readBlockInfo(blockInfoFileName, allBlockInfos[i])) {
+            MPI_Finalize();
+            return EXIT_FAILURE;
+        }
+        livEngine.addProcessorData(i, {allBlockInfos[i].posX, allBlockInfos[i].posY, allBlockInfos[i].posZ}, {static_cast<float>(allBlockInfos[i].sizeX), static_cast<float>(allBlockInfos[i].sizeY), static_cast<float>(allBlockInfos[i].sizeZ)});
+    }
 
     float pixelToWorld = livEngine.getVolumeScaling();
 
