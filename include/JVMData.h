@@ -27,10 +27,10 @@ public:
     jobject obj;
     JNIEnv *env;
 
-    explicit JVMData(int windowWidth, int windowHeight, int rank, int commSize, int nodeRank);
+    explicit JVMData(int windowWidth, int windowHeight, int rank, int commSize, int nodeRank, const std::string& benchmarkDataset);
 };
 
-inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSize, int nodeRank) {
+inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSize, int nodeRank, const std::string& benchmarkDataset = "") {
     std::string className = "ConvexVolumesInterface";
 
     DIR *dir;
@@ -58,6 +58,15 @@ inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSiz
 
     JavaVMInitArgs vm_args;                // Initialization arguments
     int num_options = 8;
+    if(!benchmarkDataset.empty()) {
+        std::cout << "Running in benchmark mode with dataset: " << benchmarkDataset << std::endl;
+        num_options++;
+    }
+
+    if (getEnvVar("SCENERY_GPU_ID", false) != nullptr) {
+        num_options++;
+    }
+
     auto *options = new JavaVMOption[num_options];   // JVM invocation options
     options[0].optionString = (char *)classPath.c_str();
 
@@ -98,6 +107,18 @@ inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSiz
 
     options[7].optionString = (char *)
             (icet_option).c_str();
+
+    std::string benchmark_dataset_option;
+    if(!benchmarkDataset.empty()) {
+        benchmark_dataset_option = std::string("-Dliv-renderer.BenchmarkDataset=") + benchmarkDataset;
+        options[8].optionString = (char *) (benchmark_dataset_option).c_str();
+    }
+
+    std::string gpu_id_option;
+    if (getEnvVar("SCENERY_GPU_ID", false) != nullptr) {
+        gpu_id_option = std::string("-Dscenery.Renderer.DeviceId=") + std::string(getEnvVar("SCENERY_GPU_ID"));
+        options[9].optionString = (char *) (gpu_id_option).c_str();
+    }
 
     vm_args.version = JNI_VERSION_21;
     vm_args.nOptions = num_options;

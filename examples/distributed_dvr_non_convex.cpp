@@ -95,7 +95,7 @@ bool areBlocksAdjacent(const BlockInfo& block1, const BlockInfo& block2) {
 
 int main(int argc, char* argv[]) {
 
-    auto livEngine = liv::LiVEngine::initialize(1280, 720);
+    auto livEngine = liv::LiVEngine::initialize(1280, 720, TODO);
 
     int rank, numProcs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);

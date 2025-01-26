@@ -9,7 +9,7 @@
 #include <thread>
 #include <filesystem>
 
-typedef char datatype;
+typedef unsigned short datatype;
 
 struct BlockInfo {
     int sizeX;
@@ -75,22 +75,22 @@ bool directoryExists(const std::string& path) {
 
 int main(int argc, char* argv[]) {
 
-    auto livEngine = liv::LiVEngine::initialize(1280, 720);
-
-    int rank, numProcs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
-
     // Command-line argument parsing
-    if (argc != 2) {
-        if (rank == 0) {
-            std::cerr << "Usage: mpirun -np <num_processes> ./program <data_directory>" << std::endl;
-        }
+    if (argc != 3) {
+        std::cerr << "Usage: mpirun -np <num_processes> ./program <data_directory> <dataset_name>" << std::endl;
         MPI_Finalize();
         return EXIT_FAILURE;
     }
 
     std::string dataDirectory = argv[1];
+    std::string datasetName = argv[2];
+
+    auto livEngine = liv::LiVEngine::initialize(1280, 720, datasetName);
+
+    int rank, numProcs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
+
 
     std::string infoFilePath;
     for (const auto& entry : std::filesystem::directory_iterator(dataDirectory)) {

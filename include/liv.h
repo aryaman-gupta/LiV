@@ -38,9 +38,9 @@ namespace liv {
 
         LiVEngine();
 
-        LiVEngine(int windowWidth, int windowHeight);
+        LiVEngine(int windowWidth, int windowHeight, const std::string& benchmarkDataset = "");
 
-        static LiVEngine initialize(int windowWidth, int windowHeight);
+        static LiVEngine initialize(int windowWidth, int windowHeight, const std::string& benchmarkDataset);
 
         void doRender() const;
 
@@ -72,7 +72,7 @@ namespace liv {
 
     inline LiVEngine::LiVEngine() : LiVEngine(DEFAULT_WIDTH, DEFAULT_HEIGHT) {}
 
-    inline LiVEngine::LiVEngine(int windowWidth, int windowHeight) : wWidth(windowWidth), wHeight(windowHeight) {
+    inline LiVEngine::LiVEngine(int windowWidth, int windowHeight, const std::string& benchmarkDataset) : wWidth(windowWidth), wHeight(windowHeight) {
         std::cout << "Entering LiVEngine constructor" << std::endl;
 
         int rank;
@@ -88,7 +88,7 @@ namespace liv {
         int node_rank;
         MPI_Comm_rank(nodeComm,&node_rank);
 
-        jvmData = new JVMData(windowWidth, windowHeight, rank, num_processes, node_rank);
+        jvmData = new JVMData(windowWidth, windowHeight, rank, num_processes, node_rank, benchmarkDataset);
         renderingManager = new RenderingManager(jvmData);
         std::cout << "Initialized jvmData" << std::endl;
         mpiBuffers = MPIBuffers();
@@ -98,14 +98,14 @@ namespace liv {
         std::cout << "Exiting LiVEngine constructor" << std::endl;
     }
 
-    inline LiVEngine LiVEngine::initialize(int windowWidth, int windowHeight) {
+    inline LiVEngine LiVEngine::initialize(int windowWidth, int windowHeight, const std::string& benchmarkDataset = "") {
 
         int provided;
         MPI_Init_thread(NULL, NULL, MPI_THREAD_SERIALIZED, &provided);
 
         std::cout << "Got MPI thread level: " << provided << std::endl;
 
-        auto liv = LiVEngine(windowWidth, windowHeight);
+        auto liv = LiVEngine(windowWidth, windowHeight, benchmarkDataset);
 
         liv.livComm = liv.setupCommunicators();
 
