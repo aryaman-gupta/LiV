@@ -102,6 +102,7 @@ int main(int argc, char* argv[]) {
         MPI_Finalize();
         return EXIT_FAILURE;
     }
+
     std::ifstream infoFile(infoFilePath);
     if (!infoFile.is_open()) {
         std::cerr << "Error: Could not open info file: " << infoFilePath << std::endl;
@@ -109,24 +110,24 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    std::string line;
-    std::getline(infoFile, line);
-    std::stringstream ss(line);
-    std::vector<int> datasetDimensions;
-    std::string value;
-    while (std::getline(ss, value, ',')) {
-        datasetDimensions.push_back(std::stoi(value));
+    int sizeX, sizeY, sizeZ, datatypeValue;
+    infoFile >> sizeX >> sizeY >> sizeZ >> datatypeValue;
+
+    if (infoFile.fail()) {
+        std::cerr << "Error: Failed to read block info from file: " << infoFilePath << std::endl;
+        MPI_Finalize();
+        return EXIT_FAILURE;
     }
 
-    std::string datatypeLine;
-    std::getline(infoFile, datatypeLine);
-    int datatypeValue = std::stoi(datatypeLine);
     if (datatypeValue != 8 && datatypeValue != 16) {
         std::cerr << "Error: Invalid datatype value in .info file: " << datatypeValue << ". Please ensure that the datatype value is either 8 or 16." << std::endl;
         MPI_Finalize();
         return EXIT_FAILURE;
     }
+
     infoFile.close();
+
+    std::vector<int> datasetDimensions = {sizeX, sizeY, sizeZ};
 
     // Construct the blocks directory path
     std::string blocksDirectory = dataDirectory + "/blocks" + std::to_string(numProcs);
