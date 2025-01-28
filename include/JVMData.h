@@ -57,7 +57,7 @@ inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSiz
     className = "graphics/scenery/tests/interfaces/" + className;
 
     JavaVMInitArgs vm_args;                // Initialization arguments
-    int num_options = 8;
+    int num_options = 9;
     auto *options = new JavaVMOption[num_options];   // JVM invocation options
     options[0].optionString = (char *)classPath.c_str();
 
@@ -92,12 +92,20 @@ inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSiz
     options[6].optionString = (char *)
             (option2).c_str();
 
-    auto icet_jni_lib_path = (getEnvVar("ICET_JNI_LIB_PATH", false) == nullptr) ? "/usr/local/lib/" : getEnvVar("ICET_JNI_LIB_PATH");
+    auto icet_jni_lib_path = (getEnvVar("MPI_JNI_LIB_PATH", false) == nullptr) ? "/usr/local/lib/" : getEnvVar("ICET_JNI_LIB_PATH");
 
     std::string icet_option = std::string("-Djava.library.path=") + icet_jni_lib_path;
 
     options[7].optionString = (char *)
             (icet_option).c_str();
+
+    std::string gpu_id_option;
+    if (getEnvVar("SCENERY_GPU_ID", false) != nullptr) {
+        gpu_id_option = std::string("-Dscenery.Renderer.DeviceId=") + std::string(getEnvVar("SCENERY_GPU_ID"));
+    } else {
+        gpu_id_option = std::string("-Dscenery.Renderer.DeviceId=") + std::to_string(nodeRank);
+    }
+    options[8].optionString = (char *) (gpu_id_option).c_str();
 
     vm_args.version = JNI_VERSION_21;
     vm_args.nOptions = num_options;
