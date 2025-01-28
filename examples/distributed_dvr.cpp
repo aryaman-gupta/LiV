@@ -9,8 +9,6 @@
 #include <thread>
 #include <filesystem>
 
-typedef unsigned short datatype;
-
 struct BlockInfo {
     int sizeX;
     int sizeY;
@@ -119,6 +117,15 @@ int main(int argc, char* argv[]) {
     while (std::getline(ss, value, ',')) {
         datasetDimensions.push_back(std::stoi(value));
     }
+
+    std::string datatypeLine;
+    std::getline(infoFile, datatypeLine);
+    int datatypeValue = std::stoi(datatypeLine);
+    if (datatypeValue != 8 && datatypeValue != 16) {
+        std::cerr << "Error: Invalid datatype value in .info file: " << datatypeValue << ". Please ensure that the datatype value is either 8 or 16." << std::endl;
+        MPI_Finalize();
+        return EXIT_FAILURE;
+    }
     infoFile.close();
 
     // Construct the blocks directory path
@@ -196,9 +203,13 @@ int main(int argc, char* argv[]) {
     float position[3] = {blockInfo.posX, blockInfo.posY, blockInfo.posZ};
     int dimensions[3] = {blockInfo.sizeX, blockInfo.sizeY, blockInfo.sizeZ};
 
-    auto volume = liv::createVolume<datatype>(position, dimensions, &livEngine);
-
-    volume.update(reinterpret_cast<datatype*>(blockData.data()), blockData.size());
+    if(datatypeValue == 8) {
+        auto volume = liv::createVolume<char>(position, dimensions, &livEngine);
+        volume.update(reinterpret_cast<char*>(blockData.data()), blockData.size());
+    } else {
+        auto volume = liv::createVolume<unsigned short>(position, dimensions, &livEngine);
+        volume.update(reinterpret_cast<unsigned short*>(blockData.data()), blockData.size());
+    }
 
     livEngine.setSceneConfigured();
 
