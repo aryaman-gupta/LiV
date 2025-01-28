@@ -7,8 +7,7 @@
 #include <sys/stat.h>
 #include <liv.h>
 #include <thread>
-
-typedef unsigned short datatype;
+#include <filesystem>
 
 struct BlockInfo {
     int sizeX;
@@ -95,24 +94,62 @@ bool areBlocksAdjacent(const BlockInfo& block1, const BlockInfo& block2) {
 
 int main(int argc, char* argv[]) {
 
-    auto livEngine = liv::LiVEngine::initialize(1280, 720, TODO);
-
-    int rank, numProcs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
-
     // Command-line argument parsing
-    if (argc != 2) {
-        if (rank == 0) {
-            std::cerr << "Usage: mpirun -np <num_processes> ./program <data_directory>" << std::endl;
-        }
+    if (argc != 3) {
+        std::cerr << "Usage: mpirun -np <num_processes> ./program <data_directory> <dataset_name>" << std::endl;
         MPI_Finalize();
         return EXIT_FAILURE;
     }
 
     std::string dataDirectory = argv[1];
+    std::string datasetName = argv[2];
+
+    auto livEngine = liv::LiVEngine::initialize(1280, 720, datasetName);
+
+    int rank, numProcs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
 
     int numBlocks = 2 * numProcs;
+
+    std::string infoFilePath;
+    for (const auto& entry : std::filesystem::directory_iterator(dataDirectory)) {
+        if (entry.path().extension() == ".info") {
+            infoFilePath = entry.path().string();
+            break;
+        }
+    }
+    if (infoFilePath.empty()) {
+        std::cerr << "Error: No .info file found in directory: " << dataDirectory << ". Please ensure that there is a .info file containing the dimensions of the dataset as comma-seperated integers." << std::endl;
+        MPI_Finalize();
+        return EXIT_FAILURE;
+    }
+
+    std::ifstream infoFile(infoFilePath);
+    if (!infoFile.is_open()) {
+        std::cerr << "Error: Could not open info file: " << infoFilePath << std::endl;
+        MPI_Finalize();
+        return EXIT_FAILURE;
+    }
+
+    int sizeX, sizeY, sizeZ, datatypeValue;
+    infoFile >> sizeX >> sizeY >> sizeZ >> datatypeValue;
+
+    if (infoFile.fail()) {
+        std::cerr << "Error: Failed to read block info from file: " << infoFilePath << std::endl;
+        MPI_Finalize();
+        return EXIT_FAILURE;
+    }
+
+    if (datatypeValue != 8 && datatypeValue != 16) {
+        std::cerr << "Error: Invalid datatype value in .info file: " << datatypeValue << ". Please ensure that the datatype value is either 8 or 16." << std::endl;
+        MPI_Finalize();
+        return EXIT_FAILURE;
+    }
+
+    infoFile.close();
+
+    std::vector<int> datasetDimensions = {sizeX, sizeY, sizeZ};
 
     // Construct the blocks directory path
     std::string blocksDirectory = dataDirectory + "/blocks" + std::to_string(numBlocks);
@@ -165,7 +202,11 @@ int main(int argc, char* argv[]) {
         std::cout << "Process " << rank << ": Assigned blocks are non-adjacent." << std::endl;
     }
 
-    float pixelToWorld = 3.84f/1024.0f;
+    std::thread renderThread([&livEngine]() { livEngine.doRender(); });
+
+    livEngine.setVolumeDimensions(datasetDimensions);
+
+    float pixelToWorld = livEngine.getVolumeScaling();
 
     blockInfo1.posX *= pixelToWorld;
     blockInfo1.posY *= (-1 * pixelToWorld);
@@ -189,19 +230,25 @@ int main(int argc, char* argv[]) {
     std::cout << "    Size: " << blockInfo2.sizeX << " x " << blockInfo2.sizeY << " x " << blockInfo2.sizeZ << std::endl;
     std::cout << "    Position: (" << blockInfo2.posX << ", " << blockInfo2.posY << ", " << blockInfo2.posZ << ")" << std::endl;
 
-    std::thread renderThread([&livEngine]() { livEngine.doRender(); });
-
     float position1[3] = {blockInfo1.posX, blockInfo1.posY, blockInfo1.posZ};
     int dimensions1[3] = {blockInfo1.sizeX, blockInfo1.sizeY, blockInfo1.sizeZ};
 
     float position2[3] = {blockInfo2.posX, blockInfo2.posY, blockInfo2.posZ};
     int dimensions2[3] = {blockInfo2.sizeX, blockInfo2.sizeY, blockInfo2.sizeZ};
 
-    auto volume1 = liv::createVolume<datatype>(position1, dimensions1, &livEngine);
-    auto volume2 = liv::createVolume<datatype>(position2, dimensions2, &livEngine);
+    if(datatypeValue == 8) {
+        auto volume1 = liv::createVolume<char>(position1, dimensions1, &livEngine);
+        auto volume2 = liv::createVolume<char>(position2, dimensions2, &livEngine);
 
-    volume1.update(reinterpret_cast<datatype*>(blockData1.data()), blockData1.size());
-    volume2.update(reinterpret_cast<datatype*>(blockData2.data()), blockData2.size());
+        volume1.update(reinterpret_cast<char*>(blockData1.data()), blockData1.size());
+        volume2.update(reinterpret_cast<char*>(blockData2.data()), blockData2.size());
+    } else {
+        auto volume1 = liv::createVolume<unsigned short>(position1, dimensions1, &livEngine);
+        auto volume2 = liv::createVolume<unsigned short>(position2, dimensions2, &livEngine);
+
+        volume1.update(reinterpret_cast<unsigned short*>(blockData1.data()), blockData1.size());
+        volume2.update(reinterpret_cast<unsigned short*>(blockData2.data()), blockData2.size());
+    }
 
     livEngine.setSceneConfigured();
 
