@@ -114,7 +114,7 @@ inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSiz
     std::string benchmark_dataset_option;
     if(!benchmarkDataset.empty()) {
         benchmark_dataset_option = std::string("-Dliv-renderer.BenchmarkDataset=") + benchmarkDataset;
-        options[8].optionString = (char *) (benchmark_dataset_option).c_str();
+        options[9].optionString = (char *) (benchmark_dataset_option).c_str();
     }
 
     vm_args.version = JNI_VERSION_21;
