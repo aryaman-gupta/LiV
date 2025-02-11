@@ -32,7 +32,10 @@ target_include_directories(${PROJECT_NAME}
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
         $<INSTALL_INTERFACE:include>
         ${JNI_INCLUDE_DIRS}
-        ${MPI_C_INCLUDE_PATH}
+        $<IF:$<VERSION_LESS:${CMAKE_VERSION},3.10>,
+                ${MPI_C_INCLUDE_PATH},
+                ${MPI_CXX_INCLUDE_DIRS}
+        >
 )
 
 target_link_libraries(${PROJECT_NAME} ${JNI_LIBRARIES} ${MPI_CXX_LIBRARIES})
