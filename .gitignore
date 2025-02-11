@@ -1,6 +1,8 @@
 cmake-build-debug/*
+/.cache/
 .idea/*
 examples/cmake-build-debug/*
 examples/.idea/*
 build/*
+/out/
 *.bin

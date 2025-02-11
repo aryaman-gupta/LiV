@@ -31,7 +31,7 @@ public:
 };
 
 inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSize, int nodeRank, const std::string& benchmarkDataset = "") {
-    std::string className = "ConvexVolumesInterface";
+    std::string className = "NonConvexVolumesInterface";
 
     DIR *dir;
     struct dirent *ent;
