@@ -95,22 +95,26 @@ bool areBlocksAdjacent(const BlockInfo& block1, const BlockInfo& block2) {
 int main(int argc, char* argv[]) {
 
     // Command-line argument parsing
-    if (argc != 3) {
-        std::cerr << "Usage: mpirun -np <num_processes> ./program <data_directory> <dataset_name>" << std::endl;
+    if (argc != 5) {
+        std::cerr << "Usage: mpirun -np <num_processes> ./program"
+                     " <data_directory> <dataset_name> <width> <height>" << std::endl;
         MPI_Finalize();
         return EXIT_FAILURE;
     }
 
     std::string dataDirectory = argv[1];
     std::string datasetName = argv[2];
+    const auto width = std::atoi(argv[3]);
+    const auto height = std::atoi(argv[4]);
 
-    auto livEngine = liv::LiVEngine::initialize(1280, 720, datasetName);
+    auto livEngine = liv::LiVEngine::initialize(width, height, datasetName);
 
     int rank, numProcs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
 
-    int numBlocks = 2 * numProcs;
+    const auto numLayers = std::atoi(getEnvVar("LIV_NUM_LAYERS"));
+    int numBlocks = numLayers * numProcs;
 
     std::string infoFilePath;
     for (const auto& entry : std::filesystem::directory_iterator(dataDirectory)) {
@@ -163,44 +167,57 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    // Each process will load two blocks based on the assignment strategy
-    int blockIndex1 = rank;            // From Group A (indices 0 to n-1)
-    int blockIndex2 = (2*numProcs) - 1 - rank; // From Group B (indices n to 2n-1)
+    // Assign and load blocks.
+    using namespace std::string_literals;
 
-    // Construct the file paths for the block data and info files
-    std::string blockFileName1 = blocksDirectory + "/block_" + std::to_string(blockIndex1) + ".raw";
-    std::string infoFileName1 = blocksDirectory + "/block_" + std::to_string(blockIndex1) + ".info";
+    struct Block {
+        std::vector<char> data;
+        BlockInfo info;
+        int index;
+    };
+    std::vector<Block> blocks {static_cast<std::size_t>(numLayers)};
+    auto path = std::filesystem::path(blocksDirectory) / "";
 
-    std::string blockFileName2 = blocksDirectory + "/block_" + std::to_string(blockIndex2) + ".raw";
-    std::string infoFileName2 = blocksDirectory + "/block_" + std::to_string(blockIndex2) + ".info";
+    for (int layer = 0; layer < numLayers; ++layer) {
+        auto& block = blocks[layer];
 
-    // Read the block information for both blocks
-    BlockInfo blockInfo1, blockInfo2;
-    if (!readBlockInfo(infoFileName1, blockInfo1)) {
-        MPI_Finalize();
-        return EXIT_FAILURE;
-    }
-    if (!readBlockInfo(infoFileName2, blockInfo2)) {
-        MPI_Finalize();
-        return EXIT_FAILURE;
-    }
+        auto offset = rank + layer;
+        offset -= offset >= numProcs ? numProcs : 0;
+        block.index = layer*numProcs + offset;
 
-    // Read the block data for both blocks
-    std::vector<char> blockData1, blockData2;
-    if (!readBlockData(blockFileName1, blockData1)) {
-        MPI_Finalize();
-        return EXIT_FAILURE;
-    }
-    if (!readBlockData(blockFileName2, blockData2)) {
-        MPI_Finalize();
-        return EXIT_FAILURE;
+        path.replace_filename("block_"s + std::to_string(block.index) + ".info");
+        if (!readBlockInfo(path, blocks[layer].info)) {
+            MPI_Finalize();
+            return EXIT_FAILURE;
+        }
+
+        path.replace_extension(".raw");
+        if (!readBlockData(path, blocks[layer].data)) {
+            MPI_Finalize();
+            return EXIT_FAILURE;
+        }
     }
 
-    if (areBlocksAdjacent(blockInfo1, blockInfo2)) {
-        std::cout << "Process " << rank << ": Assigned blocks are adjacent." << std::endl;
-    } else {
-        std::cout << "Process " << rank << ": Assigned blocks are non-adjacent." << std::endl;
+    // Count block adjacencies.
+    int num_adjacent = 0;
+    int num_non_adjavent = 0;
+
+    for (int i = 0; i < blocks.size(); ++i) {
+        for (int j = i + 1; j < blocks.size(); ++j) {
+            std::cout << "Process " << rank << ": Blocks " << blocks[i].index << " and " << blocks[j].index;
+
+            if (areBlocksAdjacent(blocks[i].info, blocks[j].info)) {
+                std::cout << " are adjacent." << std::endl;
+                ++num_adjacent;
+            } else {
+                std::cout << " are non-adjacent." << std::endl;
+                ++num_non_adjavent;
+            }
+        }
     }
+
+    std::cout << "Process " << rank << " has " << num_adjacent << " adjacent, "
+              << num_non_adjavent << " non-adjacent pairs of blocks.\n";
 
     std::thread renderThread([&livEngine]() { livEngine.doRender(); });
 
@@ -208,50 +225,36 @@ int main(int argc, char* argv[]) {
 
     float pixelToWorld = livEngine.getVolumeScaling();
 
-    blockInfo1.posX *= pixelToWorld;
-    blockInfo1.posY *= (-1 * pixelToWorld);
-    blockInfo1.posZ *= pixelToWorld;
-
-    blockInfo2.posX *= pixelToWorld;
-    blockInfo2.posY *= (-1 * pixelToWorld);
-    blockInfo2.posZ *= pixelToWorld;
-
-    // Now you have:
-    // - blockData1 and blockData2: vectors containing the raw data of the blocks
-    // - blockInfo1 and blockInfo2: BlockInfo structs containing size, bit resolution, and position
-
-    // For demonstration purposes, let's print out the block info from each rank
+    // Print assigned blocks, transform to world coordinates.
     std::cout << "Process " << rank << " loaded blocks:" << std::endl;
-    std::cout << "  Block " << blockIndex1 << ":" << std::endl;
-    std::cout << "    Size: " << blockInfo1.sizeX << " x " << blockInfo1.sizeY << " x " << blockInfo1.sizeZ << std::endl;
-    std::cout << "    Position: (" << blockInfo1.posX << ", " << blockInfo1.posY << ", " << blockInfo1.posZ << ")" << std::endl;
 
-    std::cout << "  Block " << blockIndex2 << ":" << std::endl;
-    std::cout << "    Size: " << blockInfo2.sizeX << " x " << blockInfo2.sizeY << " x " << blockInfo2.sizeZ << std::endl;
-    std::cout << "    Position: (" << blockInfo2.posX << ", " << blockInfo2.posY << ", " << blockInfo2.posZ << ")" << std::endl;
+    for (auto& block : blocks) {
+        auto& info = block.info;
 
-    float position1[3] = {blockInfo1.posX, blockInfo1.posY, blockInfo1.posZ};
-    int dimensions1[3] = {blockInfo1.sizeX, blockInfo1.sizeY, blockInfo1.sizeZ};
+        info.posX *=  pixelToWorld;
+        info.posY *= -pixelToWorld;
+        info.posZ *=  pixelToWorld;
 
-    float position2[3] = {blockInfo2.posX, blockInfo2.posY, blockInfo2.posZ};
-    int dimensions2[3] = {blockInfo2.sizeX, blockInfo2.sizeY, blockInfo2.sizeZ};
-
-    if(datatypeValue == 8) {
-        auto volume1 = liv::createVolume<char>(position1, dimensions1, &livEngine);
-        auto volume2 = liv::createVolume<char>(position2, dimensions2, &livEngine);
-
-        volume1.update(reinterpret_cast<char*>(blockData1.data()), blockData1.size());
-        volume2.update(reinterpret_cast<char*>(blockData2.data()), blockData2.size());
-    } else {
-        auto volume1 = liv::createVolume<unsigned short>(position1, dimensions1, &livEngine);
-        auto volume2 = liv::createVolume<unsigned short>(position2, dimensions2, &livEngine);
-
-        volume1.update(reinterpret_cast<unsigned short*>(blockData1.data()), blockData1.size());
-        volume2.update(reinterpret_cast<unsigned short*>(blockData2.data()), blockData2.size());
+        std::cout << "  Block " << block.index << ":" << std::endl;
+        std::cout << "    Size: " << info.sizeX << " x " << info.sizeY << " x " << info.sizeZ << std::endl;
+        std::cout << "    Position: (" << info.posX << ", " << info.posY << ", " << info.posZ << ")" << std::endl;
     }
 
-    livEngine.setSceneConfigured();
+    // Pass volume data to renderer.
+    if(datatypeValue == 8) {
+        for (auto& block : blocks) {
+            liv::createVolume<char>(&block.info.posX, &block.info.sizeX, &livEngine)
+                .update(block.data.data(), block.data.size());
+        }
+    } else {
+        for (auto& block : blocks) {
+            liv::createVolume<unsigned short>(&block.info.posX, &block.info.sizeX, &livEngine)
+                .update(reinterpret_cast<unsigned short*>(block.data.data()), block.data.size());
+        }
+    }
 
+    // Run renderer.
+    livEngine.setSceneConfigured();
     renderThread.join();
 
     // Finalize MPI
