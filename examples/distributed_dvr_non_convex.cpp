@@ -181,10 +181,7 @@ int main(int argc, char* argv[]) {
 
     for (int layer = 0; layer < numLayers; ++layer) {
         auto& block = blocks[layer];
-
-        auto offset = rank + layer;
-        offset -= offset >= numProcs ? numProcs : 0;
-        block.index = layer*numProcs + offset;
+        block.index = layer*numProcs + (rank + layer) % numProcs;
 
         path.replace_filename("block_"s + std::to_string(block.index) + ".info");
         if (!readBlockInfo(path, blocks[layer].info)) {
