@@ -87,9 +87,10 @@ inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSiz
 
     auto lwjgl_shared_path = (getEnvVar("LWJGL_SHARED_PATH", false) == nullptr) ? "/tmp/" : getEnvVar("LWJGL_SHARED_PATH");
     auto lwjgl_library_path = (getEnvVar("LWJGL_LIBRARY_PATH", false) == nullptr) ? "/tmp/" : getEnvVar("LWJGL_LIBRARY_PATH");
+    const auto rank_str = std::to_string(nodeRank);
 
-    std::string option1 = std::string("-Dorg.lwjgl.system.SharedLibraryExtractPath=") + lwjgl_shared_path;
-    std::string option2 = std::string("-Dorg.lwjgl.librarypath=") + lwjgl_library_path;
+    std::string option1 = std::string("-Dorg.lwjgl.system.SharedLibraryExtractPath=") + lwjgl_shared_path + "/rank" + rank_str;
+    std::string option2 = std::string("-Dorg.lwjgl.librarypath=") + lwjgl_library_path + "/rank" + rank_str;
 
     options[5].optionString = (char *)
             (option1).c_str();
@@ -107,7 +108,7 @@ inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSiz
     if (getEnvVar("SCENERY_GPU_ID", false) != nullptr) {
         gpu_id_option = std::string("-Dscenery.Renderer.DeviceId=") + std::string(getEnvVar("SCENERY_GPU_ID"));
     } else {
-        gpu_id_option = std::string("-Dscenery.Renderer.DeviceId=") + std::to_string(nodeRank);
+        gpu_id_option = std::string("-Dscenery.Renderer.DeviceId=") + rank_str;
     }
     options[8].optionString = (char *) (gpu_id_option).c_str();
 
