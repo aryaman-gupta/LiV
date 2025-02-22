@@ -110,7 +110,7 @@ int main(int argc, char* argv[]) {
     char const* className = getenv("LIV_RENDERER_CLASS");
 
     if (className == nullptr) {
-        className = "NonConvexVolumesInterface";
+        className = "LayeredNonConvexInterface";
     }
 
     auto livEngine = liv::LiVEngine::initialize(width, height, className, datasetName);
