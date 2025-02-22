@@ -27,12 +27,26 @@ public:
     jobject obj;
     JNIEnv *env;
 
-    explicit JVMData(int windowWidth, int windowHeight, int rank, int commSize, int nodeRank, const std::string& benchmarkDataset);
+    explicit JVMData(
+        int windowWidth,
+        int windowHeight,
+        int rank,
+        int commSize,
+        int nodeRank,
+        const std::string& className,
+        const std::string& benchmarkDataset
+    );
 };
 
-inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSize, int nodeRank, const std::string& benchmarkDataset = "") {
-    std::string className = "NonConvexVolumesInterface";
-
+inline JVMData::JVMData(
+    int windowWidth,
+    int windowHeight,
+    int rank,
+    int commSize,
+    int nodeRank,
+    const std::string& className,
+    const std::string& benchmarkDataset
+) {
     DIR *dir;
     struct dirent *ent;
     std::string classPath = "-Djava.class.path=";
@@ -54,7 +68,7 @@ inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSiz
         std::exit(EXIT_FAILURE);
     }
 
-    className = "graphics/scenery/tests/interfaces/" + className;
+    auto fullClassName = "graphics/scenery/tests/interfaces/" + className;
 
     JavaVMInitArgs vm_args;                // Initialization arguments
     int num_options = 9;
@@ -141,17 +155,17 @@ inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSiz
     std::cout << "Raw returned version: " << ver << std::endl;
 
 
-    jclass localClass = env->FindClass(className.c_str());  // try to find the class
+    jclass localClass = env->FindClass(fullClassName.c_str());  // try to find the class
     if(localClass == nullptr) {
         if( env->ExceptionOccurred() ) {
             env->ExceptionDescribe();
         } else {
-            std::cerr << "ERROR: class "<< className << " not found !" <<std::endl;
+            std::cerr << "ERROR: class "<< fullClassName << " not found !" <<std::endl;
             std::exit(EXIT_FAILURE);
         }
     }
 
-    std::cout << "Class found " << className << std::endl;
+    std::cout << "Class found " << fullClassName << std::endl;
 
     jmethodID constructor = env->GetMethodID(localClass, "<init>", "(IIIII)V");  // find constructor
     if (constructor == nullptr) {
@@ -163,7 +177,7 @@ inline JVMData::JVMData(int windowWidth, int windowHeight, int rank, int commSiz
         }
     }
 
-    std::cout << "Constructor found for " << className << std::endl;
+    std::cout << "Constructor found for " << fullClassName << std::endl;
 
     //if constructor found, continue
     jobject localObj;

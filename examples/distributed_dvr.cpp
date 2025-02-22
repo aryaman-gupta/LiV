@@ -74,16 +74,19 @@ bool directoryExists(const std::string& path) {
 int main(int argc, char* argv[]) {
 
     // Command-line argument parsing
-    if (argc != 3) {
-        std::cerr << "Usage: mpirun -np <num_processes> ./program <data_directory> <dataset_name>" << std::endl;
+    if (argc != 5) {
+        std::cerr << "Usage: mpirun -np <num_processes> ./program"
+                     " <data_directory> <dataset_name> <width> <height>" << std::endl;
         MPI_Finalize();
         return EXIT_FAILURE;
     }
 
     std::string dataDirectory = argv[1];
     std::string datasetName = argv[2];
+    const auto width = std::atoi(argv[3]);
+    const auto height = std::atoi(argv[4]);
 
-    auto livEngine = liv::LiVEngine::initialize(1280, 720, datasetName);
+    auto livEngine = liv::LiVEngine::initialize(width, height, "ConvexVolumesInterface", datasetName);
 
     int rank, numProcs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
