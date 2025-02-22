@@ -74,23 +74,23 @@ bool directoryExists(const std::string& path) {
 }
 
 int main(int argc, char* argv[]) {
-
-    auto livEngine = liv::LiVEngine::initialize(1280, 720);
-
-    int rank, numProcs;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
-
     // Command-line argument parsing
-    if (argc != 2) {
-        if (rank == 0) {
-            std::cerr << "Usage: mpirun -np <num_processes> ./program <data_directory>" << std::endl;
-        }
+    if (argc != 4) {
+        std::cerr << "Usage: mpirun -np <num_processes> ./program "
+                     "<data_directory> <width> <height>" << std::endl;
         MPI_Finalize();
         return EXIT_FAILURE;
     }
 
     std::string dataDirectory = argv[1];
+    const auto width = std::atoi(argv[2]);
+    const auto height = std::atoi(argv[3]);
+
+    auto livEngine = liv::LiVEngine::initialize(width, height, "ConvexVolumesInterface");
+
+    int rank, numProcs;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
 
     std::string infoFilePath;
     for (const auto& entry : std::filesystem::directory_iterator(dataDirectory)) {

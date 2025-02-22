@@ -108,7 +108,7 @@ int main(int argc, char* argv[]) {
     const auto width = std::atoi(argv[2]);
     const auto height = std::atoi(argv[3]);
 
-    auto livEngine = liv::LiVEngine::initialize(width, height);
+    auto livEngine = liv::LiVEngine::initialize(width, height, "NonConvexVolumesInterface");
 
     int rank, numProcs;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);

@@ -36,11 +36,15 @@ namespace liv {
         MPI_Comm livComm;
         MPI_Comm applicationComm;
 
-        LiVEngine();
+        LiVEngine() = delete;
 
-        LiVEngine(int windowWidth, int windowHeight);
+        LiVEngine(int windowWidth, int windowHeight, const std::string& className);
 
-        static LiVEngine initialize(int windowWidth, int windowHeight);
+        static LiVEngine initialize(
+            int windowWidth,
+            int windowHeight,
+            const std::string& className
+        );
 
         void doRender() const;
 
@@ -70,9 +74,11 @@ namespace liv {
         return MPI_COMM_WORLD;
     }
 
-    inline LiVEngine::LiVEngine() : LiVEngine(DEFAULT_WIDTH, DEFAULT_HEIGHT) {}
-
-    inline LiVEngine::LiVEngine(int windowWidth, int windowHeight) : wWidth(windowWidth), wHeight(windowHeight) {
+    inline LiVEngine::LiVEngine(
+        int windowWidth,
+        int windowHeight,
+        const std::string& className
+    ) : wWidth(windowWidth), wHeight(windowHeight) {
         std::cout << "Entering LiVEngine constructor" << std::endl;
 
         int rank;
@@ -88,7 +94,7 @@ namespace liv {
         int node_rank;
         MPI_Comm_rank(nodeComm,&node_rank);
 
-        jvmData = new JVMData(windowWidth, windowHeight, rank, num_processes, node_rank);
+        jvmData = new JVMData(windowWidth, windowHeight, rank, num_processes, node_rank, className);
         renderingManager = new RenderingManager(jvmData);
         std::cout << "Initialized jvmData" << std::endl;
         mpiBuffers = MPIBuffers();
@@ -98,14 +104,18 @@ namespace liv {
         std::cout << "Exiting LiVEngine constructor" << std::endl;
     }
 
-    inline LiVEngine LiVEngine::initialize(int windowWidth, int windowHeight) {
+    inline LiVEngine LiVEngine::initialize(
+        int windowWidth,
+        int windowHeight,
+        const std::string& className
+    ) {
 
         int provided;
         MPI_Init_thread(NULL, NULL, MPI_THREAD_SERIALIZED, &provided);
 
         std::cout << "Got MPI thread level: " << provided << std::endl;
 
-        auto liv = LiVEngine(windowWidth, windowHeight);
+        auto liv = LiVEngine(windowWidth, windowHeight, className);
 
         liv.livComm = liv.setupCommunicators();
 
