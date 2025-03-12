@@ -9,8 +9,6 @@
 #include <thread>
 #include <filesystem>
 
-typedef char datatype;
-
 struct BlockInfo {
     int sizeX;
     int sizeY;
@@ -205,9 +203,14 @@ int main(int argc, char* argv[]) {
     float position[3] = {blockInfo.posX, blockInfo.posY, blockInfo.posZ};
     int dimensions[3] = {blockInfo.sizeX, blockInfo.sizeY, blockInfo.sizeZ};
 
-    auto volume = liv::createVolume<datatype>(position, dimensions, &livEngine);
-
-    volume.update(reinterpret_cast<datatype*>(blockData.data()), blockData.size());
+    // Pass volume data to renderer.
+    if(datatypeValue == 8) {
+        liv::createVolume<char>(position, dimensions, &livEngine)
+            .update(blockData.data(), blockData.size());
+    } else {
+        liv::createVolume<unsigned short>(position, dimensions, &livEngine)
+            .update(reinterpret_cast<unsigned short*>(blockData.data()), blockData.size());
+    }
 
     livEngine.setSceneConfigured();
 
