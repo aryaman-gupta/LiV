@@ -9,8 +9,6 @@
 #include <thread>
 #include <filesystem>
 
-typedef unsigned short datatype;
-
 struct BlockInfo {
     int sizeX;
     int sizeY;
