@@ -95,7 +95,7 @@ inline JVMData::JVMData(
 
     auto lwjgl_shared_path = (getEnvVar("LWJGL_SHARED_PATH", false) == nullptr) ? "/tmp/" : getEnvVar("LWJGL_SHARED_PATH");
     auto lwjgl_library_path = (getEnvVar("LWJGL_LIBRARY_PATH", false) == nullptr) ? "/tmp/" : getEnvVar("LWJGL_LIBRARY_PATH");
-    const auto rank_str = std::to_string(nodeRank);
+    const auto rank_str = std::to_string(rank);
 
     std::string option1 = std::string("-Dorg.lwjgl.system.SharedLibraryExtractPath=") + lwjgl_shared_path + "/rank" + rank_str;
     std::string option2 = std::string("-Dorg.lwjgl.librarypath=") + lwjgl_library_path + "/rank" + rank_str;
