@@ -95,16 +95,16 @@ bool areBlocksAdjacent(const BlockInfo& block1, const BlockInfo& block2) {
 int main(int argc, char* argv[]) {
 
     // Command-line argument parsing
-    if (argc != 4) {
+    if (argc < 2) {
         std::cerr << "Usage: mpirun -np <num_processes> ./program "
-                     "<data_directory> <width> <height>" << std::endl;
-        MPI_Finalize();
+                     "<data_directory> [<width> <height>]" << std::endl;
         return EXIT_FAILURE;
     }
 
     std::string dataDirectory = argv[1];
-    const auto width = std::atoi(argv[2]);
-    const auto height = std::atoi(argv[3]);
+    const auto [width, height] = argc >= 4
+        ? std::make_tuple(std::atoi(argv[2]), std::atoi(argv[3]))
+        : std::make_tuple(1280, 720);
 
     auto livEngine = liv::LiVEngine::initialize(width, height, "NonConvexVolumesInterface");
 
