@@ -13,9 +13,29 @@ bool createJavaVM(JavaVM **jvm, JNIEnv **env, JavaVMOption *options, int nOption
     vm_args.options = options;
     vm_args.ignoreUnrecognized = false;
 
-    jint rc = JNI_CreateJavaVM(jvm, (void **)env, &vm_args);
+    try {
+        jint rc = JNI_CreateJavaVM(jvm, (void **)env, &vm_args);
+        if (rc != JNI_OK) {
+            std::string errorMessage = "Failed to create Java VM. Error code: " + std::to_string(rc);
+            if (rc == JNI_ERR) {
+                errorMessage += " General JVM initialization error.";
+            } else if (rc == JNI_EVERSION) {
+                errorMessage += " Unsupported JNI version: " + std::to_string(vm_args.version);
+            } else if (rc == JNI_ENOMEM) {
+                errorMessage += " Not enough memory to create JVM.";
+            } else if (rc == JNI_EEXIST) {
+                errorMessage += " JVM already exists in this process.";
+            } else if (rc == JNI_EINVAL) {
+                errorMessage += " Invalid arguments provided to JVM initialization.";
+            }
+            throw std::runtime_error(errorMessage);
+        }
+    } catch (const std::exception &e) {
+        std::cerr << e.what() << std::endl;
+        return false;
+    }
 
-    return rc == JNI_OK;
+    return true;
 }
 
 JNIEnv* getJNIEnv(JavaVM *jvm) {
