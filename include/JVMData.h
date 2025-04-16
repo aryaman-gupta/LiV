@@ -5,6 +5,9 @@
 #ifndef DISTRIBUTEDVIS_JVMDATA_HPP
 #define DISTRIBUTEDVIS_JVMDATA_HPP
 
+#include <cstring>
+#include <fstream>
+#include <vector>
 #include <jni.h>
 #include <dirent.h>
 #include <iostream>
@@ -68,8 +71,29 @@ inline JVMData::JVMData(
 
     auto fullClassName = "graphics/scenery/tests/interfaces/" + className;
 
-    JavaVMInitArgs vm_args;                // Initialization arguments
-    int num_options = 9;
+    JavaVMInitArgs vm_args;
+    std::ifstream optionsFile("liv_jvm_options.txt");
+    std::vector<std::string> additionalOptions;
+
+    int num_additional_options = 0;
+
+    if (optionsFile.is_open()) {
+        std::cout << "Found additional JVM options file, reading options..." << std::endl;
+        std::string line;
+
+        while (std::getline(optionsFile, line)) {
+            if (!line.empty()) {
+                additionalOptions.push_back(line);
+                num_additional_options++;
+            }
+        }
+        optionsFile.close();
+    } else {
+        std::cout << "Did not find additional JVM options file, using default options. If you want to use custom options, "
+                     "please create a file named liv_jvm_options.txt in the current directory." << std::endl;
+    }
+
+    int num_options = 9 + num_additional_options;
     auto *options = new JavaVMOption[num_options];   // JVM invocation options
     options[0].optionString = (char *)classPath.c_str();
 
@@ -119,6 +143,11 @@ inline JVMData::JVMData(
         gpu_id_option = std::string("-Dscenery.Renderer.DeviceId=") + rank_str;
     }
     options[8].optionString = (char *) (gpu_id_option).c_str();
+
+    // Add options from the file
+    for (size_t i = 0; i < additionalOptions.size(); ++i) {
+        options[9+i].optionString = strdup(additionalOptions[i].c_str());
+    }
 
     vm_args.version = JNI_VERSION_21;
     vm_args.nOptions = num_options;
