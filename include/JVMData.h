@@ -93,6 +93,17 @@ inline JVMData::JVMData(
                      "please create a file named liv_jvm_options.txt in the current directory." << std::endl;
     }
 
+    // Handle LiV-Test-Benchmark environment variable and add JVM options accordingly
+    const char* benchmarkEnv = getenv("LiV-Test-Benchmark");
+    if ((benchmarkEnv == nullptr || std::string(benchmarkEnv) == "false") && rank == 0) {
+        additionalOptions.push_back("-Dscenery.ServerAddress=tcp://127.0.0.1");
+        additionalOptions.push_back("-Dscenery.RemoteCamera=true");
+        num_additional_options += 2;
+    } else if (benchmarkEnv != nullptr && std::string(benchmarkEnv) == "true") {
+        additionalOptions.push_back("-Dscenery.LiV-Test-Benchmark=true");
+        num_additional_options += 1;
+    }
+
     int num_options = 9 + num_additional_options;
     auto *options = new JavaVMOption[num_options];   // JVM invocation options
     options[0].optionString = (char *)classPath.c_str();
